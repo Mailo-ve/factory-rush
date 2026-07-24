@@ -104,9 +104,15 @@ function Machine:getCompoundRate() : number
         return 0
     end
 
-    -- Compound Engine upgrade: Fabricator branch A increases rate
+    -- Branch A: Compound Engine — higher rate
     if self.upgradeBranch == "A" and upgradeConfig.A.compoundRate then
         return upgradeConfig.A.compoundRate * self.copies
+    end
+
+    -- Branch B: Early Ignition — same rate but applied twice per tick
+    -- multiply by ticksPerCycle to get effective total rate
+    if self.upgradeBranch == "B" and upgradeConfig.B.ticksPerCycle then
+        return config.compoundRate * self.copies * upgradeConfig.B.ticksPerCycle
     end
 
     return config.compoundRate * self.copies
