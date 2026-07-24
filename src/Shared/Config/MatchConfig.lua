@@ -3,6 +3,7 @@
 -- Do not put machine or upgrade values here
 
 return {
+    STARTING_MONEY = 100,
     WIN_CONDITION           = 1000000,  -- first to this amount wins
     MATCH_DURATION          = 600,      -- hard cap in seconds
     COUNTDOWN_DURATION      = 10,       -- seconds before match starts
