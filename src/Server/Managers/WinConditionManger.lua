@@ -25,6 +25,7 @@ local WinConditionManager = {}
 
 local checkThread   = nil   -- running task thread, nil when stopped
 local isChecking    = false -- guard flag, prevents double-starting
+local onWinnerFound = nil   -- callback set by startChecking
 
 -- ─────────────────────────────────────────
 -- PRIVATE FUNCTIONS
@@ -40,12 +41,16 @@ local function checkForWinner() : boolean
         local money = EconomyService.getMoney(player)
 
         if money >= MatchConfig.WIN_CONDITION then
-            -- Fire to all clients so every player sees the win screen
             MatchEvent:FireAllClients({
                 action      = "GAME_WON",
                 winnerName  = player.DisplayName,
                 winnerMoney = money,
             })
+
+            -- Notify MatchManager via callback, passing the winner
+            if onWinnerFound then
+                onWinnerFound(player)
+            end
 
             return true
         end
@@ -60,22 +65,20 @@ end
 
 -- Starts the win condition check loop
 -- Called by MatchManager when GameState transitions to PLAYING
-function WinConditionManager.startChecking()
+-- callback: function(winnerPlayer : Player) called when a winner is found
+function WinConditionManager.startChecking(callback : (Player) -> ())
     if isChecking then
         warn("WinConditionManager.startChecking: already checking, ignoring")
         return
     end
 
-    isChecking  = true
+    onWinnerFound   = callback
+    isChecking      = true
 
     checkThread = task.spawn(function()
         while isChecking do
             task.wait(MatchConfig.ECONOMY_TICK_RATE)
-
             local winnerFound = checkForWinner()
-
-            -- Stop the loop the moment a winner is detected
-            -- MatchManager handles everything from here
             if winnerFound then
                 WinConditionManager.stopChecking()
             end
