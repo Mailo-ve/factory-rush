@@ -256,4 +256,10 @@ function MatchManager.init()
     end
 end
 
+-- Returns the current GameState string
+-- Read-only — only MatchManager writes to currentState
+function MatchManager.getCurrentState() : string
+    return currentState
+end
+
 return MatchManager
