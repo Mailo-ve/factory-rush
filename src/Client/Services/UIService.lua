@@ -13,6 +13,8 @@ local EconomyEvent      = ReplicatedStorage.Shared.RemoteEvents.EconomyEvent
 local LeaderboardEvent  = ReplicatedStorage.Shared.RemoteEvents.LeaderboardEvent
 local MatchEvent        = ReplicatedStorage.Shared.RemoteEvents.MatchEvent
 
+local UpgradeConfig = require(ReplicatedStorage.Shared.Config.UpgradeConfig)
+
 local UIService = {}
 
 -- ─────────────────────────────────────────
@@ -216,6 +218,20 @@ local function collectUIReferences()
     ui.hudScreen        = hud
     ui.winScreen        = playerGui:WaitForChild("WinScreen")
     ui.winLabel         = ui.winScreen:WaitForChild("WinLabel")
+
+    -- StatsPanel
+    local statsPanel            = hud:WaitForChild("StatsPanel")
+    ui.statsPanel               = statsPanel
+    ui.statsMachineTypeLabel    = statsPanel:WaitForChild("MachineTypeLabel")
+    ui.statsUpgradeBranchA      = statsPanel:WaitForChild("UpgradeBranchA")
+    ui.statsUpgradeBranchB      = statsPanel:WaitForChild("UpgradeBranchB")
+    ui.statsUpgradeStatusLabel  = statsPanel:WaitForChild("UpgradeStatusLabel")
+    ui.statsCloseButton         = statsPanel:WaitForChild("CloseStats")
+
+    ui.statsCloseButton.Activated:Connect(function()
+        UIService.hideStatsPanel()
+    end)
+
 end
 
 -- ─────────────────────────────────────────
@@ -233,6 +249,56 @@ function UIService.init()
     if ui.waitingScreen then
         ui.waitingScreen.Visible = true
     end
+end
+
+-- Shows the StatsPanel populated with machine info and upgrade options
+-- isUpgraded: true hides buttons and shows status label instead
+-- Returns button references so PadController can connect upgrade logic
+function UIService.showStatsPanel(
+    machineType : string,
+    isUpgraded  : boolean
+)
+    local upgradeConfig = UpgradeConfig[machineType]
+
+    ui.statsMachineTypeLabel.Text = machineType
+
+    if isUpgraded then
+        ui.statsUpgradeBranchA.Visible      = false
+        ui.statsUpgradeBranchB.Visible      = false
+        ui.statsUpgradeStatusLabel.Visible  = true
+        ui.statsUpgradeStatusLabel.Text     = "Already upgraded"
+    else
+        ui.statsUpgradeStatusLabel.Visible  = false
+        ui.statsUpgradeBranchA.Visible      = true
+        ui.statsUpgradeBranchB.Visible      = true
+
+        if upgradeConfig then
+            ui.statsUpgradeBranchA.Text = upgradeConfig.A.name
+                .. "\n" .. upgradeConfig.A.description
+                .. "\nCost: $" .. upgradeConfig.cost
+            ui.statsUpgradeBranchB.Text = upgradeConfig.B.name
+                .. "\n" .. upgradeConfig.B.description
+                .. "\nCost: $" .. upgradeConfig.cost
+        end
+    end
+
+    ui.statsPanel.Visible = true
+end
+
+-- Hides the StatsPanel
+function UIService.hideStatsPanel()
+    if ui.statsPanel then
+        ui.statsPanel.Visible = false
+    end
+end
+
+-- Returns upgrade buttons so PadController can connect them
+function UIService.getStatsPanelButtons()
+    return {
+        branchA = ui.statsUpgradeBranchA,
+        branchB = ui.statsUpgradeBranchB,
+        close   = ui.statsCloseButton,
+    }
 end
 
 return UIService

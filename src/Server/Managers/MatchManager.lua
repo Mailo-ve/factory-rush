@@ -20,7 +20,7 @@ local DataService           = require(ServerScriptService.Server.Services.DataSe
 local PlotManager           = require(ServerScriptService.Server.Managers.PlotManager)
 local WinConditionManager   = require(ServerScriptService.Server.Managers.WinConditionManager)
 
-local PlotSetup             = require(ServerScriptService.Server.Network.PlotSetup)
+local PlotSetup             = require(ServerScriptService.Server.Services.PlotSetup)
 local MachineSpawnService   = require(ServerScriptService.Server.Services.MachineSpawnService)
 local PadService            = require(ServerScriptService.Server.Services.PadService)
 
