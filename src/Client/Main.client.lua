@@ -1,25 +1,25 @@
 -- Main.client.lua
--- Boots the client by initializing all Controllers and UIService
--- in dependency order. Contains zero game logic.
+-- Boots the client in dependency order
+-- UIBuilder runs first so all UI elements exist before UIService connects events
+-- PadController runs last since it needs the server to spawn plots first
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
 
--- Wait for shared resources to exist before requiring anything
--- This prevents errors if the client script loads before ReplicatedStorage
--- is fully populated
 ReplicatedStorage:WaitForChild("Shared")
 
-local ShopController    = require(Players.LocalPlayer
-    .PlayerScripts.Client.Controllers.ShopController)
-local UpgradeController = require(Players.LocalPlayer
-    .PlayerScripts.Client.Controllers.UpgradeController)
-local UIService         = require(Players.LocalPlayer
+local UIBuilder     = require(Players.LocalPlayer
+    .PlayerScripts.Client.UIBuilder)
+local UIService     = require(Players.LocalPlayer
     .PlayerScripts.Client.Services.UIService)
+local PadController = require(Players.LocalPlayer
+    .PlayerScripts.Client.Controllers.PadController)
 
--- UIService first — connect event listeners before any events could fire
+-- Build all UI elements before anything tries to reference them
+UIBuilder.build()
+
+-- Connect server event listeners
 UIService.init()
 
--- Controllers after — connect input handlers once UI is ready
-ShopController.init()
-UpgradeController.init()
+-- Start watching for plot and connecting world interactions
+PadController.init()

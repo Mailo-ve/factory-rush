@@ -9,6 +9,9 @@ local ServerScriptService = game:GetService("ServerScriptService")
 -- REQUIRE ALL MODULES
 -- ─────────────────────────────────────────
 
+-- Initialize RemoteEvents before anything else
+require(ServerScriptService.Server.Network.RemoteEventSetup)
+
 local MatchManager          = require(ServerScriptService.Server.Managers.MatchManager)
 local MachineEventHandler   = require(ServerScriptService.Server.Network.MachineEventHandler)
 local MatchEventHandler     = require(ServerScriptService.Server.Network.MatchEventHandler)
