@@ -20,6 +20,10 @@ local DataService           = require(ServerScriptService.Server.Services.DataSe
 local PlotManager           = require(ServerScriptService.Server.Managers.PlotManager)
 local WinConditionManager   = require(ServerScriptService.Server.Managers.WinConditionManager)
 
+local PlotSetup             = require(ServerScriptService.Server.Network.PlotSetup)
+local MachineSpawnService   = require(ServerScriptService.Server.Services.MachineSpawnService)
+local PadService            = require(ServerScriptService.Server.Services.PadService)
+
 local MatchManager = {}
 
 -- ─────────────────────────────────────────
@@ -80,6 +84,11 @@ local function cleanupPlayer(player : Player, isWinner : boolean)
 
     DataService.savePlayerData(player, data)
     EconomyService.removePlayer(player)
+
+    MachineService.removePlayer(player)
+    PadService.releaseAllPads(player)
+    MachineSpawnService.removePlayer(player)
+
     MachineService.removePlayer(player)
     activePlayers[player.UserId] = nil
 end
@@ -117,6 +126,7 @@ local function endMatch(winnerPlayer : Player?)
 
     -- Release all plots back to unoccupied
     PlotManager.releaseAllPlots()
+    PlotSetup.despawnAllPlots()
 
     -- Wait for win screen to display, then reset to WAITING
     task.delay(10, function()
@@ -134,9 +144,16 @@ local function startMatch()
 
     -- Initialize every active player across all services
     for _, player in ipairs(getActivePlayerSnapshot()) do
+        local plotId    = PlotManager.assignPlot(player)
+        local plotModel = PlotSetup.spawnPlot(player, plotId)
+
         EconomyService.initPlayer(player)
         MachineService.initPlayer(player)
-        PlotManager.assignPlot(player)
+        PadService.initPads(player)
+
+        if plotModel then
+            MachineSpawnService.initPlayer(player, plotModel)
+        end
     end
 
     transitionTo(GameState.PLAYING)
