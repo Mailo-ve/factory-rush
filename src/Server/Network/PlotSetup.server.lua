@@ -1,0 +1,119 @@
+-- PlotSetup.server.lua
+-- Clones PlotTemplate for each player at match start
+-- Positions each clone using PlotConfig.PLOT_POSITIONS
+-- Marks ownership via StringValue so PadController can find the player's plot
+-- Creates ProximityPrompts on all empty pads
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local PlotConfig    = require(ReplicatedStorage.Shared.Config.PlotConfig)
+local MachineConfig = require(ReplicatedStorage.Shared.Config.MachineConfig)
+
+local PlotSetup = {}
+
+-- ─────────────────────────────────────────
+-- PRIVATE STATE
+-- ─────────────────────────────────────────
+
+-- Maps plotId → Model reference for active plots
+local activePlots = {}
+
+-- ─────────────────────────────────────────
+-- PRIVATE HELPERS
+-- ─────────────────────────────────────────
+
+-- Adds ProximityPrompts to all pads in a cloned plot
+-- Each prompt shows machine type and cost from MachineConfig
+local function setupPadPrompts(plotModel : Model)
+    for _, part in ipairs(plotModel:GetDescendants()) do
+        if not part:IsA("BasePart") then continue end
+
+        local machineType = part.Name:match(PlotConfig.PAD_NAME_PATTERN)
+        if not machineType then continue end
+
+        local config = MachineConfig[machineType]
+        if not config then continue end
+
+        local prompt                    = Instance.new("ProximityPrompt")
+        prompt.ActionText               = PlotConfig.EMPTY_PAD_ACTION_TEXT
+        prompt.ObjectText               = machineType
+            .. " — $" .. config.cost
+        prompt.KeyboardKeyCode          = Enum.KeyCode.E
+        prompt.MaxActivationDistance    = PlotConfig.PROMPT_DISTANCE
+        prompt.HoldDuration             = PlotConfig.PROMPT_HOLD_DURATION
+        prompt.Parent                   = part
+    end
+end
+
+-- ─────────────────────────────────────────
+-- PUBLIC API
+-- ─────────────────────────────────────────
+
+-- Clones PlotTemplate, positions it, marks ownership
+-- Returns the cloned Model so MatchManager can pass it
+-- to MachineSpawnService.initPlayer
+function PlotSetup.spawnPlot(player : Player, plotId : string) : Model?
+    local template = workspace:FindFirstChild("PlotTemplate")
+    if not template then
+        warn("PlotSetup.spawnPlot: PlotTemplate not found in workspace")
+        return nil
+    end
+
+    local position = PlotConfig.PLOT_POSITIONS[plotId]
+    if not position then
+        warn("PlotSetup.spawnPlot: no position defined for " .. plotId)
+        return nil
+    end
+
+    -- Clone template
+    local plotModel         = template:Clone()
+    plotModel.Name          = plotId
+    plotModel.Parent        = workspace
+
+    -- Position using PrimaryPart (Platform)
+    local primaryPart = plotModel:FindFirstChild("Platform")
+    if primaryPart then
+        plotModel.PrimaryPart = primaryPart
+        plotModel:SetPrimaryPartCFrame(
+            CFrame.new(position)
+        )
+    end
+
+    -- Mark ownership so PadController can identify the player's plot
+    local ownerValue        = Instance.new("StringValue")
+    ownerValue.Name         = "OwnerId"
+    ownerValue.Value        = tostring(player.UserId)
+    ownerValue.Parent       = plotModel
+
+    -- Setup pad prompts
+    setupPadPrompts(plotModel)
+
+    -- Store reference
+    activePlots[plotId] = plotModel
+
+    return plotModel
+end
+
+-- Destroys a plot model and clears its reference
+function PlotSetup.despawnPlot(plotId : string)
+    local plotModel = activePlots[plotId]
+    if plotModel then
+        plotModel:Destroy()
+        activePlots[plotId] = nil
+    end
+end
+
+-- Despawns all active plots
+-- Called by MatchManager at match end
+function PlotSetup.despawnAllPlots()
+    for plotId in pairs(activePlots) do
+        PlotSetup.despawnPlot(plotId)
+    end
+end
+
+-- Returns the active plot model for a plotId
+function PlotSetup.getPlotModel(plotId : string) : Model?
+    return activePlots[plotId]
+end
+
+return PlotSetup
