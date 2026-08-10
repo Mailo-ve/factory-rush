@@ -68,7 +68,14 @@ function PlotSetup.spawnPlot(player : Player, plotId : string) : Model?
     -- Clone template
     local plotModel         = template:Clone()
     plotModel.Name          = plotId
-    plotModel.Parent        = workspace
+    
+    local plotsFolder = workspace:FindFirstChild("Plots")
+    if not plotsFolder then
+        plotsFolder = Instance.new("Folder")
+        plotsFolder.Name = "Plots"
+        plotsFolder.Parent = workspace
+    end
+    plotModel.Parent = plotsFolder
 
     -- Position using PrimaryPart (Platform)
     local primaryPart = plotModel:FindFirstChild("Platform")

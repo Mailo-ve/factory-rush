@@ -36,3 +36,5 @@ ensureRemoteEvent(remoteEvents, "MatchEvent")
 ensureRemoteEvent(remoteEvents, "LeaderboardEvent")
 
 print("RemoteEventSetup: all RemoteEvents ready")
+
+return true
