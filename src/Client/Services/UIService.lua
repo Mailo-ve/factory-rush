@@ -70,10 +70,10 @@ end
 -- Hides all full-screen panels
 -- Called before showing the correct one for the current state
 local function hideAllScreens()
-    if ui.waitingScreen   then ui.waitingScreen.Visible   = false end
-    if ui.countdownScreen then ui.countdownScreen.Visible = false end
-    if ui.hudScreen       then ui.hudScreen.Visible       = false end
-    if ui.winScreen       then ui.winScreen.Visible       = false end
+    if ui.waitingScreen   then ui.waitingScreen.Enabled   = false end
+    if ui.countdownScreen then ui.countdownScreen.Enabled = false end
+    if ui.hudScreen       then ui.hudScreen.Enabled       = false end
+    if ui.winScreen       then ui.winScreen.Enabled       = false end
 end
 
 -- ─────────────────────────────────────────
@@ -127,16 +127,16 @@ local function onStateChanged(payload)
     local newState = payload.newState
 
     if newState == GameState.WAITING then
-        if ui.waitingScreen then ui.waitingScreen.Visible = true end
+        if ui.waitingScreen then ui.waitingScreen.Enabled = true end
 
     elseif newState == GameState.COUNTDOWN then
-        if ui.countdownScreen then ui.countdownScreen.Visible = true end
+        if ui.countdownScreen then ui.countdownScreen.Enabled = true end
 
     elseif newState == GameState.PLAYING then
-        if ui.hudScreen then ui.hudScreen.Visible = true end
+        if ui.hudScreen then ui.hudScreen.Enabled = true end
 
     elseif newState == GameState.ENDING then
-        if ui.winScreen then ui.winScreen.Visible = true end
+        if ui.winScreen then ui.winScreen.Enabled = true end
     end
 end
 
@@ -147,7 +147,7 @@ local function onGameWon(payload)
 
     hideAllScreens()
 
-    if ui.winScreen then ui.winScreen.Visible = true end
+    if ui.winScreen then ui.winScreen.Enabled = true end
 
     if ui.winLabel then
         if payload.winnerName then
@@ -200,10 +200,13 @@ local function collectUIReferences()
     local hud = playerGui:WaitForChild("HUD")
 
     -- HUD elements
-    ui.moneyLabel   = hud:WaitForChild("MoneyLabel")
+
+    -- was: ui.moneyLabel = hud:WaitForChild("MoneyLabel")
+    local moneyDisplay = hud:WaitForChild("MoneyDisplay")
+    ui.moneyLabel   = moneyDisplay:WaitForChild("MoneyLabel")
+    ui.incomeLabel  = moneyDisplay:WaitForChild("IncomeLabel")
+
     ui.incomeLabel  = hud:WaitForChild("IncomeLabel")
-    ui.shopPanel    = hud:WaitForChild("ShopPanel")
-    ui.upgradePanel = hud:WaitForChild("UpgradePanel")
 
     -- Leaderboard
     local leaderboard       = hud:WaitForChild("Leaderboard")
@@ -247,7 +250,7 @@ function UIService.init()
 
     -- Show waiting screen as the default starting state
     if ui.waitingScreen then
-        ui.waitingScreen.Visible = true
+        ui.waitingScreen.Enabled = true
     end
 end
 
