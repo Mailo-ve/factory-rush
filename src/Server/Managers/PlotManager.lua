@@ -32,7 +32,7 @@ function PlotManager.initPlots(plotIds : {string})
     playerPlots = {}
 
     for _, plotId in ipairs(plotIds) do
-        plotOwners[plotId] = nil     -- nil means unoccupied
+        plotOwners[plotId] = false     -- nil means unoccupied
     end
 end
 
@@ -48,7 +48,7 @@ function PlotManager.assignPlot(player : Player) : string?
 
     -- Find first unoccupied plot
     for plotId, ownerId in pairs(plotOwners) do
-        if ownerId == nil then
+        if ownerId == false then
             plotOwners[plotId]          = player.UserId
             playerPlots[player.UserId]  = plotId
             return plotId
@@ -69,7 +69,7 @@ function PlotManager.releasePlot(player : Player)
         return
     end
 
-    plotOwners[plotId]          = nil
+    plotOwners[plotId]          = false
     playerPlots[player.UserId]  = nil
 end
 
@@ -88,7 +88,7 @@ end
 -- Called by MatchManager when a match ends
 function PlotManager.releaseAllPlots()
     for plotId in pairs(plotOwners) do
-        plotOwners[plotId] = nil
+        plotOwners[plotId] = false
     end
     playerPlots = {}
 end

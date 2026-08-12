@@ -206,8 +206,6 @@ local function collectUIReferences()
     ui.moneyLabel   = moneyDisplay:WaitForChild("MoneyLabel")
     ui.incomeLabel  = moneyDisplay:WaitForChild("IncomeLabel")
 
-    ui.incomeLabel  = hud:WaitForChild("IncomeLabel")
-
     -- Leaderboard
     local leaderboard       = hud:WaitForChild("Leaderboard")
     ui.leaderboardFrame     = leaderboard
@@ -216,11 +214,15 @@ local function collectUIReferences()
 
     -- Full-screen panels
     ui.waitingScreen    = playerGui:WaitForChild("WaitingScreen")
-    ui.countdownScreen  = playerGui:WaitForChild("CountdownScreen")
-    ui.countdownLabel   = ui.countdownScreen:WaitForChild("CountdownLabel")
-    ui.hudScreen        = hud
-    ui.winScreen        = playerGui:WaitForChild("WinScreen")
-    ui.winLabel         = ui.winScreen:WaitForChild("WinLabel")
+    ui.countdownScreen   = playerGui:WaitForChild("CountdownScreen")
+    local countdownCard  = ui.countdownScreen:WaitForChild("Overlay"):WaitForChild("Card")
+    ui.countdownLabel    = countdownCard:WaitForChild("CountdownLabel")
+
+    ui.hudScreen         = hud
+
+    ui.winScreen         = playerGui:WaitForChild("WinScreen")
+    local winCard        = ui.winScreen:WaitForChild("Overlay"):WaitForChild("Card")
+    ui.winLabel          = winCard:WaitForChild("WinLabel")
 
     -- StatsPanel
     local statsPanel            = hud:WaitForChild("StatsPanel")
