@@ -234,7 +234,7 @@ end
 
 local function buildMoneyDisplay(hud)
     local moneyFrame = makeFrame(hud, "MoneyDisplay",
-        UDim2.new(0, 16, 0, 16),
+        UDim2.new(0.5, -100, 0, 12),
         UDim2.new(0, 200, 0, 72),
         COLORS.panel, 0)
     addCorner(moneyFrame, 10)
@@ -338,6 +338,7 @@ end
 
 local function buildHUD()
     local gui = makeScreenGui("HUD", false)
+    gui.IgnoreGuiInset = false
 
     buildMoneyDisplay(gui)
     buildLeaderboard(gui)
