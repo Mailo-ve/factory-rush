@@ -160,6 +160,24 @@ end
 -- PRIVATE SETUP
 -- ─────────────────────────────────────────
 
+local function onQueueStatus(payload)
+    if not payload or type(payload) ~= "table" then return end
+
+    if payload.action == "QUEUE_JOINED" then
+        if ui.waitingScreen then ui.waitingScreen.Enabled = true end
+
+    elseif payload.action == "QUEUE_UPDATE" then
+        if ui.waitingScreen then ui.waitingScreen.Enabled = true end
+        if ui.waitingSubtitle then
+            ui.waitingSubtitle.Text = payload.count .. " / " .. payload.max
+                .. " players — need " .. payload.needed .. " to start"
+        end
+
+    elseif payload.action == "QUEUE_LEFT" then
+        if ui.waitingScreen then ui.waitingScreen.Enabled = false end
+    end
+end
+
 -- Connects all RemoteEvent listeners
 local function connectEvents()
     -- EconomyEvent carries multiple actions in future
@@ -189,24 +207,6 @@ local function connectEvents()
 
     QueueEvent.OnClientEvent:Connect(onQueueStatus)
 
-end
-
-local function onQueueStatus(payload)
-    if not payload or type(payload) ~= "table" then return end
-
-    if payload.action == "QUEUE_JOINED" then
-        if ui.waitingScreen then ui.waitingScreen.Enabled = true end
-
-    elseif payload.action == "QUEUE_UPDATE" then
-        if ui.waitingScreen then ui.waitingScreen.Enabled = true end
-        if ui.waitingSubtitle then
-            ui.waitingSubtitle.Text = payload.count .. " / " .. payload.max
-                .. " players — need " .. payload.needed .. " to start"
-        end
-
-    elseif payload.action == "QUEUE_LEFT" then
-        if ui.waitingScreen then ui.waitingScreen.Enabled = false end
-    end
 end
 
 -- Collects all UI element references from PlayerGui
