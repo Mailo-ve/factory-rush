@@ -217,10 +217,6 @@ local function collectUIReferences()
 
     -- HUD elements
 
-    -- Reference to Subtitle
-    local waitingCard  = ui.waitingScreen:WaitForChild("Overlay"):WaitForChild("Card")
-    ui.waitingSubtitle = waitingCard:WaitForChild("Subtitle")
-
     -- was: ui.moneyLabel = hud:WaitForChild("MoneyLabel")
     local moneyDisplay = hud:WaitForChild("MoneyDisplay")
     ui.moneyLabel   = moneyDisplay:WaitForChild("MoneyLabel")
@@ -237,6 +233,11 @@ local function collectUIReferences()
     ui.countdownScreen   = playerGui:WaitForChild("CountdownScreen")
     local countdownCard  = ui.countdownScreen:WaitForChild("Overlay"):WaitForChild("Card")
     ui.countdownLabel    = countdownCard:WaitForChild("CountdownLabel")
+
+    -- Reference to Subtitle
+    local waitingCard  = ui.waitingScreen:WaitForChild("Overlay"):WaitForChild("Card")
+    ui.waitingSubtitle = waitingCard:WaitForChild("Subtitle")
+
 
     ui.hudScreen         = hud
 
