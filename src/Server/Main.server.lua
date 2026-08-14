@@ -17,6 +17,9 @@ local MachineEventHandler   = require(ServerScriptService.Server.Network.Machine
 local MatchEventHandler     = require(ServerScriptService.Server.Network.MatchEventHandler)
 local EconomyEventHandler   = require(ServerScriptService.Server.Network.EconomyEventHandler)
 
+local MatchManager = require(ServerScriptService.Server.Managers.MatchManager)
+local QueueManager = require(ServerScriptService.Server.Managers.QueueManager)
+
 -- Services are not initialized here directly
 -- They are initialized by Managers at the correct point in the match lifecycle
 -- Requiring them here would bypass that lifecycle and cause errors
@@ -35,3 +38,4 @@ EconomyEventHandler.init()
 -- MatchManager last — starts listening for players joining
 -- By this point all listeners are connected and ready
 MatchManager.init()
+QueueManager.init()

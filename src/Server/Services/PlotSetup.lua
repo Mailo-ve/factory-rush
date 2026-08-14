@@ -110,6 +110,35 @@ function PlotSetup.despawnPlot(plotId : string)
     end
 end
 
+-- Teleports a player's character to their plot's PlayerSpawn marker
+function PlotSetup.teleportPlayerToPlot(player : Player, plotModel : Model)
+    local character = player.Character
+    if not character then return end
+
+    local spawnPart = plotModel:FindFirstChild("PlayerSpawn")
+    if not spawnPart then
+        warn("PlotSetup.teleportPlayerToPlot: no PlayerSpawn found in plot")
+        return
+    end
+
+    character:PivotTo(spawnPart.CFrame + Vector3.new(0, 3, 0))
+end
+
+-- Teleports a player's character back to the Lobby's Spawn point
+function PlotSetup.teleportPlayerToLobby(player : Player)
+    local character = player.Character
+    if not character then return end
+
+    local lobby = workspace:FindFirstChild("Lobby")
+    local spawnPart = lobby and lobby:FindFirstChild("Spawn")
+    if not spawnPart then
+        warn("PlotSetup.teleportPlayerToLobby: no Lobby/Spawn found in workspace")
+        return
+    end
+
+    character:PivotTo(spawnPart.CFrame + Vector3.new(0, 3, 0))
+end
+
 -- Despawns all active plots
 -- Called by MatchManager at match end
 function PlotSetup.despawnAllPlots()

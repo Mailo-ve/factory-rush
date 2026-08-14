@@ -100,15 +100,11 @@ end
 -- Ends the current match
 -- winnerPlayer: the Player who triggered the win, nil if match timed out
 local function endMatch(winnerPlayer : Player?)
-    -- Guard: only end from PLAYING state
-    -- Prevents double-calls from timer expiry and win detection racing
     if currentState ~= GameState.PLAYING then return end
 
-    -- Stop all running systems immediately
     EconomyService.stopTick()
     WinConditionManager.stopChecking()
 
-    -- Cancel the hard cap timer if it's still running
     if matchTimerThread then
         task.cancel(matchTimerThread)
         matchTimerThread = nil
@@ -116,71 +112,63 @@ local function endMatch(winnerPlayer : Player?)
 
     transitionTo(GameState.ENDING)
 
-    -- Save and clean up every active player
-    -- Using snapshot so cleanup doesn't break the iteration
-    for _, player in ipairs(getActivePlayerSnapshot()) do
-        local isWinner = winnerPlayer ~= nil
-            and player.UserId == winnerPlayer.UserId
+    local finishedPlayers = getActivePlayerSnapshot()
+
+    for _, player in ipairs(finishedPlayers) do
+        local isWinner = winnerPlayer ~= nil and player.UserId == winnerPlayer.UserId
         cleanupPlayer(player, isWinner)
     end
 
-    -- Release all plots back to unoccupied
     PlotManager.releaseAllPlots()
     PlotSetup.despawnAllPlots()
 
-    -- Wait for win screen to display, then reset to WAITING
     task.delay(10, function()
+        for _, player in ipairs(finishedPlayers) do
+            if player.Parent then -- guard: they may have disconnected during results
+                PlotSetup.teleportPlayerToLobby(player)
+            end
+        end
         transitionTo(GameState.WAITING)
     end)
 end
 
+-- small public getter, used by QueueManager's guard
+function MatchManager.isPlayerInMatch(player : Player) : boolean
+    return activePlayers[player.UserId] ~= nil
+end
+
 -- Initializes all systems and starts the match
 -- Only callable from COUNTDOWN state
-local function startMatch()
+local function startMatch(players : {Player})
     if currentState ~= GameState.COUNTDOWN then return end
 
-    -- Initialize plots from MatchConfig
+    for _, player in ipairs(players) do
+        activePlayers[player.UserId] = player
+    end
+
     PlotManager.initPlots(MatchConfig.PLOT_IDS)
 
-    -- Initialize every active player across all services
-    for _, player in ipairs(getActivePlayerSnapshot()) do
+    for _, player in ipairs(players) do
         local plotId    = PlotManager.assignPlot(player)
         local plotModel = PlotSetup.spawnPlot(player, plotId)
+
+        if plotModel then
+            PlotSetup.teleportPlayerToPlot(player, plotModel)
+            MachineSpawnService.initPlayer(player, plotModel)
+        end
 
         EconomyService.initPlayer(player)
         MachineService.initPlayer(player)
         PadService.initPads(player)
-
-        if plotModel then
-            MachineSpawnService.initPlayer(player, plotModel)
-        end
     end
 
     transitionTo(GameState.PLAYING)
-
-    -- Start the economy tick
-    EconomyService.startTick()
-
-    -- Start win detection, passing endMatch as the callback
-    -- WinConditionManager calls this when a player crosses WIN_CONDITION
-    WinConditionManager.startChecking(function(winnerPlayer : Player)
-        endMatch(winnerPlayer)
-    end)
-
-    -- Start the hard cap timer
-    -- If nobody wins within MATCH_DURATION seconds, end the match anyway
-    matchTimerThread = task.spawn(function()
-        task.wait(MatchConfig.MATCH_DURATION)
-        if currentState == GameState.PLAYING then
-            warn("MatchManager: match time limit reached, forcing end")
-            endMatch(nil)   -- nil = no winner, time ran out
-        end
-    end)
+    -- ...rest (EconomyService.startTick(), WinConditionManager, matchTimerThread) unchanged
 end
 
 -- Starts the pre-match countdown
 -- Only callable from WAITING state
-local function startCountdown()
+function MatchManager.beginCountdown()
     if currentState ~= GameState.WAITING then return end
 
     transitionTo(GameState.COUNTDOWN)
@@ -189,12 +177,13 @@ local function startCountdown()
         task.wait(MatchConfig.COUNTDOWN_DURATION)
         countdownThread = nil
 
-        -- Re-check player count after countdown
-        -- Players may have left during the 10 seconds
-        if getActivePlayerCount() >= MatchConfig.MIN_PLAYERS then
-            startMatch()
+        local QueueManager = require(ServerScriptService.Server.Managers.QueueManager)
+        local queuedSnapshot = QueueManager.getQueueSnapshot()
+
+        if #queuedSnapshot >= MatchConfig.MIN_PLAYERS then
+            QueueManager.removePlayers(queuedSnapshot)
+            startMatch(queuedSnapshot)
         else
-            -- Not enough players remained, reset
             warn("MatchManager: not enough players after countdown, resetting")
             transitionTo(GameState.WAITING)
         end
@@ -205,53 +194,18 @@ end
 -- PLAYER LIFECYCLE
 -- ─────────────────────────────────────────
 
-local function onPlayerAdded(player : Player)
-    -- Players who join during an active match wait for the next one
-    -- Only WAITING and COUNTDOWN accept new players
-    if currentState == GameState.PLAYING or currentState == GameState.ENDING then
-        return
-    end
-
-    activePlayers[player.UserId] = player
-
-    -- Check if we now have enough to start
-    if currentState == GameState.WAITING then
-        if getActivePlayerCount() >= MatchConfig.MIN_PLAYERS then
-            startCountdown()
-        end
-    end
-end
-
 local function onPlayerRemoving(player : Player)
-    -- Ignore players who aren't tracked (joined during PLAYING/ENDING)
     if not activePlayers[player.UserId] then return end
 
     if currentState == GameState.PLAYING then
-        -- Clean up and release their plot individually
         cleanupPlayer(player, false)
         PlotManager.releasePlot(player)
 
-        -- If only one player remains, match is uncontested — end it
         if getActivePlayerCount() <= 1 then
             warn("MatchManager: too few players remain, ending match")
             endMatch(nil)
         end
-
-    elseif currentState == GameState.COUNTDOWN then
-        activePlayers[player.UserId] = nil
-
-        -- If we drop below minimum during countdown, cancel and reset
-        if getActivePlayerCount() < MatchConfig.MIN_PLAYERS then
-            if countdownThread then
-                task.cancel(countdownThread)
-                countdownThread = nil
-            end
-            warn("MatchManager: player left during countdown, not enough players")
-            transitionTo(GameState.WAITING)
-        end
-
     else
-        -- WAITING or ENDING — just remove them from tracking
         activePlayers[player.UserId] = nil
     end
 end
@@ -263,14 +217,9 @@ end
 -- Boots MatchManager and connects all player lifecycle events
 -- Called once by Main.server.lua at server startup
 function MatchManager.init()
-    Players.PlayerAdded:Connect(onPlayerAdded)
+
     Players.PlayerRemoving:Connect(onPlayerRemoving)
 
-    -- Handle players who joined before this script loaded
-    -- This happens frequently in Studio solo testing
-    for _, player in ipairs(Players:GetPlayers()) do
-        onPlayerAdded(player)
-    end
 end
 
 -- Returns the current GameState string

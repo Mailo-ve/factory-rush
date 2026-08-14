@@ -34,6 +34,7 @@ ensureRemoteEvent(remoteEvents, "MachineEvent")
 ensureRemoteEvent(remoteEvents, "EconomyEvent")
 ensureRemoteEvent(remoteEvents, "MatchEvent")
 ensureRemoteEvent(remoteEvents, "LeaderboardEvent")
+ensureRemoteEvent(remoteEvents, "QueueEvent")
 
 print("RemoteEventSetup: all RemoteEvents ready")
 

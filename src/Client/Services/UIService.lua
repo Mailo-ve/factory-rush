@@ -13,6 +13,8 @@ local EconomyEvent      = ReplicatedStorage.Shared.RemoteEvents.EconomyEvent
 local LeaderboardEvent  = ReplicatedStorage.Shared.RemoteEvents.LeaderboardEvent
 local MatchEvent        = ReplicatedStorage.Shared.RemoteEvents.MatchEvent
 
+local QueueEvent = ReplicatedStorage.Shared.RemoteEvents.QueueEvent
+
 local UpgradeConfig = require(ReplicatedStorage.Shared.Config.UpgradeConfig)
 
 local UIService = {}
@@ -121,20 +123,13 @@ end
 -- Shows the correct full-screen panel for the new state
 local function onStateChanged(payload)
     if not payload or type(payload) ~= "table" then return end
-
     hideAllScreens()
-
     local newState = payload.newState
 
-    if newState == GameState.WAITING then
-        if ui.waitingScreen then ui.waitingScreen.Enabled = true end
-
-    elseif newState == GameState.COUNTDOWN then
+    if newState == GameState.COUNTDOWN then
         if ui.countdownScreen then ui.countdownScreen.Enabled = true end
-
     elseif newState == GameState.PLAYING then
         if ui.hudScreen then ui.hudScreen.Enabled = true end
-
     elseif newState == GameState.ENDING then
         if ui.winScreen then ui.winScreen.Enabled = true end
     end
@@ -191,6 +186,27 @@ local function connectEvents()
             onGameWon(payload)
         end
     end)
+
+    QueueEvent.OnClientEvent:Connect(onQueueStatus)
+
+end
+
+local function onQueueStatus(payload)
+    if not payload or type(payload) ~= "table" then return end
+
+    if payload.action == "QUEUE_JOINED" then
+        if ui.waitingScreen then ui.waitingScreen.Enabled = true end
+
+    elseif payload.action == "QUEUE_UPDATE" then
+        if ui.waitingScreen then ui.waitingScreen.Enabled = true end
+        if ui.waitingSubtitle then
+            ui.waitingSubtitle.Text = payload.count .. " / " .. payload.max
+                .. " players — need " .. payload.needed .. " to start"
+        end
+
+    elseif payload.action == "QUEUE_LEFT" then
+        if ui.waitingScreen then ui.waitingScreen.Enabled = false end
+    end
 end
 
 -- Collects all UI element references from PlayerGui
@@ -200,6 +216,10 @@ local function collectUIReferences()
     local hud = playerGui:WaitForChild("HUD")
 
     -- HUD elements
+
+    -- Reference to Subtitle
+    local waitingCard  = ui.waitingScreen:WaitForChild("Overlay"):WaitForChild("Card")
+    ui.waitingSubtitle = waitingCard:WaitForChild("Subtitle")
 
     -- was: ui.moneyLabel = hud:WaitForChild("MoneyLabel")
     local moneyDisplay = hud:WaitForChild("MoneyDisplay")
