@@ -11,10 +11,11 @@ return {
             description         = "Each Harvester produces 50% more income",
             incomeMultiplier    = 1.5,
         },
+
         B = {
-            name                = "Bulk Order",
-            description         = "All future Harvesters cost 30% less",
-            costMultiplier      = 0.7,
+            name                = "Steady Output",
+            description         = "Each upgraded Harvester produces a flat 16 income per tick",
+            selfIncomeOverride  = 16,
         },
     },
     Assembler = {
