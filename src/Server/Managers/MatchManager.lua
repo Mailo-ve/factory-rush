@@ -163,7 +163,25 @@ local function startMatch(players : {Player})
     end
 
     transitionTo(GameState.PLAYING)
-    -- ...rest (EconomyService.startTick(), WinConditionManager, matchTimerThread) unchanged
+
+    -- Start the economy tick
+    EconomyService.startTick()
+
+    -- Start win detection, passing endMatch as the callback
+    -- WinConditionManager calls this when a player crosses WIN_CONDITION
+    WinConditionManager.startChecking(function(winnerPlayer : Player)
+        endMatch(winnerPlayer)
+    end)
+
+    -- Start the hard cap timer
+    -- If nobody wins within MATCH_DURATION seconds, end the match anyway
+    matchTimerThread = task.spawn(function()
+        task.wait(MatchConfig.MATCH_DURATION)
+        if currentState == GameState.PLAYING then
+            warn("MatchManager: match time limit reached, forcing end")
+            endMatch(nil)
+        end
+    end)
 end
 
 -- Starts the pre-match countdown

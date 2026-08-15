@@ -171,51 +171,37 @@ end
 
 -- Searches the Plots folder for the model with OwnerId matching this player
 -- Polls until found or timeout reached
+-- Searches the Plots folder for the model with OwnerId matching this player.
+-- Waits indefinitely — there's no fixed upper bound on how long a player
+-- may sit in the lobby before a match actually starts, and this runs in
+-- a background thread, so waiting doesn't block anything else.
 local function findPlayerPlot() : Model?
-    local plotsFolder = workspace:WaitForChild("Plots", 60)
-    if not plotsFolder then
-        warn("PadController: Plots folder not found in workspace")
-        return nil
-    end
+    local plotsFolder = workspace:WaitForChild("Plots")
 
-    -- Check already-existing children first
     for _, model in ipairs(plotsFolder:GetChildren()) do
         if model:IsA("Model") then
             local ownerValue = model:FindFirstChild("OwnerId")
-            if ownerValue
-                and ownerValue.Value == tostring(player.UserId)
-            then
+            if ownerValue and ownerValue.Value == tostring(player.UserId) then
                 return model
             end
         end
     end
 
-    -- Plot not spawned yet — wait for it
-    local found     = nil
-    local conn      = plotsFolder.ChildAdded:Connect(function(child)
-        -- Small wait to allow OwnerId StringValue to replicate
+    local found = nil
+    local conn
+    conn = plotsFolder.ChildAdded:Connect(function(child)
         task.wait()
         if child:IsA("Model") then
             local ownerValue = child:FindFirstChild("OwnerId")
-            if ownerValue
-                and ownerValue.Value == tostring(player.UserId)
-            then
+            if ownerValue and ownerValue.Value == tostring(player.UserId) then
                 found = child
+                conn:Disconnect()
             end
         end
     end)
 
-    local timeout   = 60
-    local elapsed   = 0
-    while not found and elapsed < timeout do
+    while not found do
         task.wait(0.5)
-        elapsed = elapsed + 0.5
-    end
-    conn:Disconnect()
-
-    if not found then
-        warn("PadController: could not find player plot after "
-            .. timeout .. "s")
     end
 
     return found

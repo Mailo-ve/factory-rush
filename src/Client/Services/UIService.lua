@@ -19,6 +19,9 @@ local UpgradeConfig = require(ReplicatedStorage.Shared.Config.UpgradeConfig)
 
 local UIService = {}
 
+local MatchConfig = require(ReplicatedStorage.Shared.Config.MatchConfig)
+local countdownThread = nil
+
 -- ─────────────────────────────────────────
 -- PRIVATE STATE
 -- ─────────────────────────────────────────
@@ -119,20 +122,44 @@ local function onLeaderboardUpdated(payload)
     end
 end
 
+local function stopCountdownDisplay()
+    if countdownThread then
+        task.cancel(countdownThread)
+        countdownThread = nil
+    end
+end
+
+local function startCountdownDisplay()
+    stopCountdownDisplay()
+    countdownThread = task.spawn(function()
+        local remaining = MatchConfig.COUNTDOWN_DURATION
+        while remaining > 0 do
+            if ui.countdownLabel then ui.countdownLabel.Text = tostring(remaining) end
+            task.wait(1)
+            remaining -= 1
+        end
+        if ui.countdownLabel then ui.countdownLabel.Text = "0" end
+    end)
+end
+
 -- Called when server fires MatchEvent(STATE_CHANGED)
 -- Shows the correct full-screen panel for the new state
 local function onStateChanged(payload)
     if not payload or type(payload) ~= "table" then return end
     hideAllScreens()
+    stopCountdownDisplay()
     local newState = payload.newState
 
     if newState == GameState.COUNTDOWN then
-        if ui.countdownScreen then ui.countdownScreen.Enabled = true end
+        if ui.countdownScreen then ui.countdownScreen.Enabled = true startCountdownDisplay() end
     elseif newState == GameState.PLAYING then
         if ui.hudScreen then ui.hudScreen.Enabled = true end
     elseif newState == GameState.ENDING then
         if ui.winScreen then ui.winScreen.Enabled = true end
     end
+
+
+
 end
 
 -- Called when server fires MatchEvent(GAME_WON)
@@ -235,7 +262,7 @@ local function collectUIReferences()
     ui.countdownLabel    = countdownCard:WaitForChild("CountdownLabel")
 
     -- Reference to Subtitle
-    local waitingCard  = ui.waitingScreen:WaitForChild("Overlay"):WaitForChild("Card")
+    local waitingCard  = ui.waitingScreen:WaitForChild("Card")
     ui.waitingSubtitle = waitingCard:WaitForChild("Subtitle")
 
 

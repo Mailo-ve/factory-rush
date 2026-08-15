@@ -131,30 +131,26 @@ end
 
 local function buildWaitingScreen()
     local gui = makeScreenGui("WaitingScreen", false)
+    gui.IgnoreGuiInset = false
 
-    local overlay = makeFrame(gui, "Overlay",
-        UDim2.new(0, 0, 0, 0),
-        UDim2.new(1, 0, 1, 0),
-        COLORS.background, 0.3)
-
-    local card = makeFrame(overlay, "Card",
-        UDim2.new(0.5, -150, 0.5, -80),
-        UDim2.new(0, 300, 0, 160),
+    local card = makeFrame(gui, "Card",
+        UDim2.new(0.5, -150, 0, 16),
+        UDim2.new(0, 300, 0, 90),
         COLORS.panel, 0)
     addCorner(card, 16)
-    addPadding(card, 24)
+    addPadding(card, 16)
 
     local title = makeLabel(card, "Title", "Waiting for Players",
         UDim2.new(0, 0, 0, 0),
-        UDim2.new(1, 0, 0.4, 0),
-        22, COLORS.text, FONTS.header)
+        UDim2.new(1, 0, 0.45, 0),
+        18, COLORS.text, FONTS.header)
     title.TextXAlignment = Enum.TextXAlignment.Center
 
     local sub = makeLabel(card, "Subtitle",
         "Match starts when enough players join",
-        UDim2.new(0, 0, 0.45, 0),
-        UDim2.new(1, 0, 0.35, 0),
-        14, COLORS.subtext, FONTS.body)
+        UDim2.new(0, 0, 0.5, 0),
+        UDim2.new(1, 0, 0.4, 0),
+        13, COLORS.subtext, FONTS.body)
     sub.TextXAlignment = Enum.TextXAlignment.Center
 end
 
@@ -171,7 +167,7 @@ local function buildCountdownScreen()
         COLORS.background, 0.4)
 
     local card = makeFrame(overlay, "Card",
-        UDim2.new(0.5, -120, 0.5, -120),
+        UDim2.new(0.5, -120, 0, 20),
         UDim2.new(0, 240, 0, 240),
         COLORS.panel, 0)
     addCorner(card, 16)
@@ -202,8 +198,8 @@ local function buildWinScreen()
         COLORS.background, 0.3)
 
     local card = makeFrame(overlay, "Card",
-        UDim2.new(0.5, -200, 0.5, -120),
-        UDim2.new(0, 400, 0, 240),
+        UDim2.new(0.5, -120, 0, 20),
+        UDim2.new(0, 240, 0, 240),
         COLORS.panel, 0)
     addCorner(card, 16)
     addPadding(card, 28)
