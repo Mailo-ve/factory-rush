@@ -114,7 +114,7 @@ local function endMatch(winnerPlayer : Player?)
     matchTimerThread = nil
 
     local finishedPlayers = getActivePlayerSnapshot()
-    transitionTo(GameState.ENDING)
+    transitionTo(GameState.ENDING, finishedPlayers)
 
     for _, player in ipairs(finishedPlayers) do
         local isWinner = winnerPlayer ~= nil and player.UserId == winnerPlayer.UserId
@@ -191,14 +191,15 @@ end
 function MatchManager.beginCountdown()
     if currentState ~= GameState.WAITING then return end
 
-    local queuedAtStart =   .getQueueSnapshot()
+    local QueueManager = require(ServerScriptService.Server.Managers.QueueManager)
+    local queuedAtStart = QueueManager.getQueueSnapshot()
+
     transitionTo(GameState.COUNTDOWN, queuedAtStart)
 
     countdownThread = task.spawn(function()
         task.wait(MatchConfig.COUNTDOWN_DURATION)
         countdownThread = nil
 
-        local QueueManager = require(ServerScriptService.Server.Managers.QueueManager)
         local queuedSnapshot = QueueManager.getQueueSnapshot()
 
         if #queuedSnapshot >= MatchConfig.MIN_PLAYERS then

@@ -90,7 +90,7 @@ function QueueManager.joinQueue(player : Player)
     end
 
     queuedPlayers[player.UserId] = player
-    QueueEvent:FireClient(player, { action = "QUEUE_JOINED" })
+
     broadcastQueueStatus()
 
     if MatchManager.isCountingDown() then

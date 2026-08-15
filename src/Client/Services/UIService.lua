@@ -151,7 +151,10 @@ local function onStateChanged(payload)
     local newState = payload.newState
 
     if newState == GameState.COUNTDOWN then
-        if ui.countdownScreen then ui.countdownScreen.Enabled = true startCountdownDisplay() end
+        if ui.countdownScreen then 
+            ui.countdownScreen.Enabled = true
+        end
+        startCountdownDisplay() 
     elseif newState == GameState.PLAYING then
         if ui.hudScreen then ui.hudScreen.Enabled = true end
     elseif newState == GameState.ENDING then
