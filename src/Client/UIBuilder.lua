@@ -167,7 +167,7 @@ local function buildCountdownScreen()
         COLORS.background, 0.4)
 
     local card = makeFrame(overlay, "Card",
-        UDim2.new(0.5, -120, 0, 20),
+        UDim2.new(0.5, -120, 0.5, -120),
         UDim2.new(0, 240, 0, 240),
         COLORS.panel, 0)
     addCorner(card, 16)

@@ -14,6 +14,8 @@ local UIService     = require(Players.LocalPlayer
     .PlayerScripts.Client.Services.UIService)
 local PadController = require(Players.LocalPlayer
     .PlayerScripts.Client.Controllers.PadController)
+local SprintController = require(Players.LocalPlayer
+    .PlayerScripts.Client.Controllers.SprintController)
 
 -- Build all UI elements before anything tries to reference them
 UIBuilder.build()
@@ -23,3 +25,5 @@ UIService.init()
 
 -- Start watching for plot and connecting world interactions
 PadController.init()
+
+SprintController.init()
