@@ -93,6 +93,12 @@ function QueueManager.joinQueue(player : Player)
     QueueEvent:FireClient(player, { action = "QUEUE_JOINED" })
     broadcastQueueStatus()
 
+    if MatchManager.isCountingDown() then
+        MatchManager.notifyLateJoiner(player)
+    else
+        QueueEvent:FireClient(player, { action = "QUEUE_JOINED" })
+    end
+    
     if getQueueCount() >= MatchConfig.MIN_PLAYERS then
         MatchManager.beginCountdown()
     end

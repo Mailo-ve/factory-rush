@@ -62,12 +62,15 @@ local function getActivePlayerSnapshot() : {Player}
 end
 
 -- Transitions to a new GameState and notifies all clients
-local function transitionTo(newState : string)
+local function transitionTo(newState : string, targetPlayers : {Player}?)
     currentState = newState
-    MatchEvent:FireAllClients({
-        action   = "STATE_CHANGED",
-        newState = newState,
-    })
+    if targetPlayers then
+        for _, player in ipairs(targetPlayers) do
+            MatchEvent:FireClient(player, { action = "STATE_CHANGED", newState = newState })
+        end
+    else
+        MatchEvent:FireAllClients({ action = "STATE_CHANGED", newState = newState })
+    end
 end
 
 -- Saves one player's data and removes them from all services
@@ -105,14 +108,13 @@ local function endMatch(winnerPlayer : Player?)
     EconomyService.stopTick()
     WinConditionManager.stopChecking()
 
-    if matchTimerThread then
+    if matchTimerThread and coroutine.running() ~= matchTimerThread then
         task.cancel(matchTimerThread)
-        matchTimerThread = nil
     end
-
-    transitionTo(GameState.ENDING)
+    matchTimerThread = nil
 
     local finishedPlayers = getActivePlayerSnapshot()
+    transitionTo(GameState.ENDING)
 
     for _, player in ipairs(finishedPlayers) do
         local isWinner = winnerPlayer ~= nil and player.UserId == winnerPlayer.UserId
@@ -162,7 +164,7 @@ local function startMatch(players : {Player})
         PadService.initPads(player)
     end
 
-    transitionTo(GameState.PLAYING)
+    transitionTo(GameState.PLAYING, players)
 
     -- Start the economy tick
     EconomyService.startTick()
@@ -189,7 +191,8 @@ end
 function MatchManager.beginCountdown()
     if currentState ~= GameState.WAITING then return end
 
-    transitionTo(GameState.COUNTDOWN)
+    local queuedAtStart =   .getQueueSnapshot()
+    transitionTo(GameState.COUNTDOWN, queuedAtStart)
 
     countdownThread = task.spawn(function()
         task.wait(MatchConfig.COUNTDOWN_DURATION)
@@ -206,6 +209,14 @@ function MatchManager.beginCountdown()
             transitionTo(GameState.WAITING)
         end
     end)
+end
+
+function MatchManager.isCountingDown() : boolean
+    return currentState == GameState.COUNTDOWN
+end
+
+function MatchManager.notifyLateJoiner(player : Player)
+    MatchEvent:FireClient(player, { action = "STATE_CHANGED", newState = GameState.COUNTDOWN })
 end
 
 -- ─────────────────────────────────────────
@@ -227,6 +238,7 @@ local function onPlayerRemoving(player : Player)
         activePlayers[player.UserId] = nil
     end
 end
+
 
 -- ─────────────────────────────────────────
 -- PUBLIC API
