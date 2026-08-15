@@ -1,8 +1,9 @@
 -- MachineService.lua
--- Owns: machine purchasing and upgrade logic
--- CHANGED: purchaseMachine now takes padId
---          calls PadService and MachineSpawnService
---          handles construction duration timer
+-- Owns: machine purchasing, per-copy upgrade purchasing, and servicing
+-- CHANGED: recalculateIncome is now public and efficiency-aware, so
+--          PadService's decay tick can trigger it directly.
+--          purchaseUpgrade now validates per-pad, not per-type — each
+--          physical copy needs its own upgrade purchase.
 
 local ReplicatedStorage     = game:GetService("ReplicatedStorage")
 local ServerScriptService   = game:GetService("ServerScriptService")
@@ -36,39 +37,6 @@ local playerMachines = {}
 -- PRIVATE FUNCTIONS
 -- ─────────────────────────────────────────
 
-local function recalculateIncome(player : Player)
-    local machines = playerMachines[player.UserId]
-    if not machines then return end
-
-    local harvesterIncome = 0
-    if machines.Harvester then
-        harvesterIncome = machines.Harvester:getSelfIncome()
-    end
-
-    local harvesterMultiplier = 1.0
-    if machines.Assembler then
-        harvesterMultiplier = machines.Assembler:getHarvesterMultiplier()
-    end
-
-    local boostedHarvesterIncome = harvesterIncome * harvesterMultiplier
-
-    local assemblerIncome = 0
-    if machines.Assembler then
-        assemblerIncome = machines.Assembler:getSelfIncome()
-    end
-
-    local baseIncome = boostedHarvesterIncome + assemblerIncome
-
-    local compoundBonus = 0
-    if machines.Fabricator then
-        local compoundRate = machines.Fabricator:getCompoundRate()
-        compoundBonus = baseIncome * compoundRate
-    end
-
-    local totalIncome = baseIncome + compoundBonus
-    getEconomyService().setCurrentIncome(player, math.floor(totalIncome))
-end
-
 -- Handles construction timer and transitions pad to ACTIVE
 local function runConstructionTimer(
     player      : Player,
@@ -81,7 +49,7 @@ local function runConstructionTimer(
 
         getPadService().setPadActive(player, padId)
         getMachineSpawnService().setMachineActive(player, padId, machineType)
-        recalculateIncome(player)
+        MachineService.recalculateIncome(player)
     end)
 end
 
@@ -101,8 +69,49 @@ function MachineService.removePlayer(player : Player)
     playerMachines[player.UserId] = nil
 end
 
--- CHANGED: now takes padId as third argument
--- Validates pad type matches machineType before purchasing
+-- Recomputes total income from scratch and pushes it to EconomyService.
+-- Public so PadService's decay tick can call it whenever efficiency
+-- changes, not just after a purchase or upgrade.
+-- Each machine type's contribution is scaled by that type's average
+-- pad efficiency, so decayed or broken-down machines earn less.
+function MachineService.recalculateIncome(player : Player)
+    local machines = playerMachines[player.UserId]
+    if not machines then return end
+
+    local PadService = getPadService()
+
+    local harvesterIncome = 0
+    if machines.Harvester then
+        local efficiency = PadService.getAverageEfficiency(player, "Harvester") / 100
+        harvesterIncome = machines.Harvester:getSelfIncome() * efficiency
+    end
+
+    local harvesterMultiplier = 1.0
+    if machines.Assembler then
+        harvesterMultiplier = machines.Assembler:getHarvesterMultiplier()
+    end
+
+    local boostedHarvesterIncome = harvesterIncome * harvesterMultiplier
+
+    local assemblerIncome = 0
+    if machines.Assembler then
+        local efficiency = PadService.getAverageEfficiency(player, "Assembler") / 100
+        assemblerIncome = machines.Assembler:getSelfIncome() * efficiency
+    end
+
+    local baseIncome = boostedHarvesterIncome + assemblerIncome
+
+    local compoundBonus = 0
+    if machines.Fabricator then
+        local efficiency = PadService.getAverageEfficiency(player, "Fabricator") / 100
+        local compoundRate = machines.Fabricator:getCompoundRate() * efficiency
+        compoundBonus = baseIncome * compoundRate
+    end
+
+    local totalIncome = baseIncome + compoundBonus
+    getEconomyService().setCurrentIncome(player, math.floor(totalIncome))
+end
+
 function MachineService.purchaseMachine(
     player      : Player,
     machineType : string,
@@ -119,7 +128,6 @@ function MachineService.purchaseMachine(
         "MachineService.purchaseMachine: player not initialized: "
         .. player.DisplayName)
 
-    -- Validate pad is available for this machine type
     if not getPadService().canOccupyPad(player, padId, machineType) then
         return false, "pad unavailable or type mismatch: " .. padId
     end
@@ -130,27 +138,27 @@ function MachineService.purchaseMachine(
 
     local machine           = machines[machineType]
     local EconomyService    = getEconomyService()
-    local cost              = machine:getCopyCost()
+    local cost               = machine:getCopyCost()
 
     if not EconomyService.canAfford(player, cost) then
         return false, "cannot afford " .. machineType .. " (costs " .. cost .. ")"
     end
 
-    -- All checks passed — commit purchase
     EconomyService.deductMoney(player, cost)
     machine:addCopy()
 
-    -- Mark pad and spawn visual immediately
     getPadService().occupyPad(player, padId, machineType)
     getMachineSpawnService().spawnMachine(player, padId, machineType)
 
-    -- Construction timer — recalculates income after ACTIVE
     runConstructionTimer(player, padId, machineType)
 
     return true, nil
 end
 
--- CHANGED: now takes padId as third argument
+-- Upgrades ONE specific pad's machine into the given branch.
+-- The first upgrade purchase for a machine type locks that type into
+-- the chosen branch; every copy after that must be upgraded
+-- individually (and can only use the same branch).
 function MachineService.purchaseUpgrade(
     player      : Player,
     machineType : string,
@@ -176,25 +184,53 @@ function MachineService.purchaseUpgrade(
         return false, "player does not own any " .. machineType
     end
 
-    if machine:isUpgraded() then
-        return false, machineType .. " already upgraded (branch "
-            .. machine.upgradeBranch .. ")"
+    local PadService = getPadService()
+
+    if PadService.getPadMachineType(player, padId) ~= machineType then
+        return false, "pad does not match machine type: " .. padId
     end
 
-    local upgradeConfig     = UpgradeConfig[machineType]
-    local cost              = upgradeConfig.cost
-    local EconomyService    = getEconomyService()
+    if PadService.isPadUpgraded(player, padId) then
+        return false, "this " .. machineType .. " is already upgraded"
+    end
+
+    if not machine:hasUpgradeableCopy() then
+        return false, "every " .. machineType .. " you own is already upgraded"
+    end
+
+    local cost               = machine:getUpgradeCost()
+    local EconomyService     = getEconomyService()
 
     if not EconomyService.canAfford(player, cost) then
         return false, "cannot afford upgrade for " .. machineType
     end
 
-    -- All checks passed — commit upgrade
-    EconomyService.deductMoney(player, cost)
-    machine:applyUpgrade(branch)
-    getMachineSpawnService().updateUpgraded(player, padId, machineType, branch)
-    recalculateIncome(player)
+    -- Attempt the branch lock/count increment before spending money,
+    -- so a rejected branch mismatch never costs the player anything
+    if not machine:applyUpgrade(branch) then
+        return false, machineType .. " is locked into the other branch"
+    end
 
+    EconomyService.deductMoney(player, cost)
+    PadService.setPadUpgraded(player, padId)
+    getMachineSpawnService().updateUpgraded(player, padId, machineType, branch)
+    MachineService.recalculateIncome(player)
+
+    return true, nil
+end
+
+-- Resets one pad's machine back to full efficiency. This is the
+-- "hold E to service" action — free, instant, no purchase involved.
+function MachineService.serviceMachine(
+    player : Player,
+    padId  : string
+) : (boolean, string?)
+    local ok = getPadService().serviceMachine(player, padId)
+    if not ok then
+        return false, "pad not found or not active: " .. tostring(padId)
+    end
+
+    MachineService.recalculateIncome(player)
     return true, nil
 end
 
