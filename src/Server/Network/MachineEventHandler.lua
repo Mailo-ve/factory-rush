@@ -84,9 +84,25 @@ local function handleUpgrade(player, payload)
     end
 end
 
+local function handleService(player, payload)
+    if not isValidPayload(payload) then return end
+    if not isValidPadId(payload.padId) then return end
+    if not isPlayerInMatch(player) then return end
+
+    local success, reason = MachineService.serviceMachine(
+        player,
+        payload.padId
+    )
+    if not success then
+        warn("MachineEventHandler.SERVICE: failed for "
+            .. player.DisplayName .. ": " .. tostring(reason))
+    end
+end
+
 local actionHandlers = {
     BUILD   = handleBuild,
     UPGRADE = handleUpgrade,
+    SERVICE = handleService,
 }
 
 function MachineEventHandler.init()
