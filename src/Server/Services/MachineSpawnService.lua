@@ -2,16 +2,22 @@
 -- Owns: spawning and updating visual machine models in the world
 -- Runs server-side so all players see changes simultaneously
 -- Exposes: initPlayer, removePlayer, spawnMachine,
---          setMachineActive, updateUpgraded, despawnMachine
+--          setMachineActive, updateUpgraded, updateEfficiencyDisplay,
+--          despawnMachine
 -- Does not: calculate income, manage pad states, handle purchases,
 --           know game rules, look up plot models itself
 -- Note: MatchManager passes the plotModel into initPlayer
 --       so this service never needs to call PlotManager
+-- CHANGED: active machines now get TWO ProximityPrompts instead of one —
+--          "ServicePrompt" (E, instant efficiency reset) and
+--          "UpgradePrompt" (F, opens the StatsPanel) — found by .Name
+--          from here on, not by class, since there are now two of them
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlotConfig    = require(ReplicatedStorage.Shared.Config.PlotConfig)
-local MachineConfig = require(ReplicatedStorage.Shared.Config.MachineConfig)
+local PlotConfig        = require(ReplicatedStorage.Shared.Config.PlotConfig)
+local MachineConfig     = require(ReplicatedStorage.Shared.Config.MachineConfig)
+local MaintenanceConfig = require(ReplicatedStorage.Shared.Config.MaintenanceConfig)
 
 local MachineSpawnService = {}
 
@@ -161,7 +167,7 @@ end
 -- Transitions machine from construction to active appearance
 -- Called by MachineService after CONSTRUCTION_DURATION elapses
 -- Visual changes from yellow neon to machine type color
--- ProximityPrompt added so player can now inspect and upgrade
+-- Two ProximityPrompts are added: ServicePrompt (E) and UpgradePrompt (F)
 function MachineSpawnService.setMachineActive(
     player      : Player,
     padId       : string,
@@ -184,22 +190,34 @@ function MachineSpawnService.setMachineActive(
     part.BrickColor = visual.color
     part.Material   = visual.material
 
-    -- Add ProximityPrompt — player can now interact with this machine
-    local prompt                    = Instance.new("ProximityPrompt")
-    prompt.ActionText               = PlotConfig.BUILT_MACHINE_ACTION_TEXT
-    prompt.ObjectText               = machineType
-    prompt.KeyboardKeyCode          = Enum.KeyCode.E
-    prompt.MaxActivationDistance    = PlotConfig.PROMPT_DISTANCE
-    prompt.HoldDuration             = PlotConfig.PROMPT_HOLD_DURATION
-    prompt.Parent                   = part
+    -- Service prompt (E) — quick, resets efficiency, no menu
+    local servicePrompt                 = Instance.new("ProximityPrompt")
+    servicePrompt.Name                  = "ServicePrompt"
+    servicePrompt.ActionText            = "Service"
+    servicePrompt.ObjectText            = "Efficiency: "
+        .. MaintenanceConfig.STARTING_EFFICIENCY .. "%"
+    servicePrompt.KeyboardKeyCode       = Enum.KeyCode.E
+    servicePrompt.MaxActivationDistance = PlotConfig.PROMPT_DISTANCE
+    servicePrompt.HoldDuration          = PlotConfig.PROMPT_HOLD_DURATION
+    servicePrompt.Parent                = part
 
-    -- ProximityPrompt parented to part triggers PadController.ChildAdded
-    -- PadController connects inspect logic dynamically
+    -- Upgrade/inspect prompt (F) — opens the StatsPanel
+    local upgradePrompt                 = Instance.new("ProximityPrompt")
+    upgradePrompt.Name                  = "UpgradePrompt"
+    upgradePrompt.ActionText            = PlotConfig.BUILT_MACHINE_ACTION_TEXT
+    upgradePrompt.ObjectText            = machineType
+    upgradePrompt.KeyboardKeyCode       = Enum.KeyCode.F
+    upgradePrompt.MaxActivationDistance = PlotConfig.PROMPT_DISTANCE
+    upgradePrompt.HoldDuration          = PlotConfig.PROMPT_HOLD_DURATION
+    upgradePrompt.Parent                = part
+
+    -- Both prompts parented to part trigger PadController.ChildAdded
+    -- PadController connects the right handler to each by name
 end
 
 -- Updates machine appearance after an upgrade is applied
 -- Material changes to Neon to visually distinguish upgraded machines
--- ProximityPrompt text updated to show the chosen branch
+-- UpgradePrompt text updated to show the chosen branch
 function MachineSpawnService.updateUpgraded(
     player      : Player,
     padId       : string,
@@ -215,10 +233,36 @@ function MachineSpawnService.updateUpgraded(
     -- Neon material clearly signals this machine is upgraded
     part.Material = Enum.Material.Neon
 
-    -- Update ProximityPrompt to show chosen branch
-    local prompt = part:FindFirstChildOfClass("ProximityPrompt")
+    -- Update the UpgradePrompt specifically — found by name now,
+    -- since ServicePrompt is also a ProximityPrompt on this part
+    local prompt = part:FindFirstChild("UpgradePrompt")
     if prompt then
         prompt.ObjectText = machineType .. " [" .. branch .. "]"
+    end
+end
+
+-- Updates the ServicePrompt's displayed efficiency
+-- Called by PadService's decay tick whenever efficiency changes
+function MachineSpawnService.updateEfficiencyDisplay(
+    player      : Player,
+    padId       : string,
+    efficiency  : number
+)
+    local data = playerData[player.UserId]
+    if not data then return end
+
+    local part = data.parts[padId]
+    if not part then return end
+
+    local prompt = part:FindFirstChild("ServicePrompt")
+    if not prompt then return end
+
+    local rounded = math.floor(efficiency + 0.5)
+
+    if efficiency < MaintenanceConfig.WARNING_THRESHOLD then
+        prompt.ObjectText = "⚠ Efficiency: " .. rounded .. "% — needs service"
+    else
+        prompt.ObjectText = "Efficiency: " .. rounded .. "%"
     end
 end
 

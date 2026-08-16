@@ -248,16 +248,24 @@ function PadService.startDecayTick()
         return
     end
 
-    local MachineService = require(ServerScriptService.Server.Services.MachineService)
+    local MachineService      = require(ServerScriptService.Server.Services.MachineService)
+    local MachineSpawnService = require(ServerScriptService.Server.Services.MachineSpawnService)
 
     decayThread = task.spawn(function()
         while true do
             task.wait(MatchConfig.ECONOMY_TICK_RATE)
             decayAllPads()
 
-            for userId in pairs(playerPads) do
+            for userId, pads in pairs(playerPads) do
                 local player = Players:GetPlayerByUserId(userId)
                 if player then
+                    for padId, record in pairs(pads) do
+                        if record.state == PadState.ACTIVE then
+                            MachineSpawnService.updateEfficiencyDisplay(
+                                player, padId, record.efficiency
+                            )
+                        end
+                    end
                     MachineService.recalculateIncome(player)
                 end
             end

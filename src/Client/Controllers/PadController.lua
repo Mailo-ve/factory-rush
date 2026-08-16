@@ -2,9 +2,12 @@
 -- Replaces ShopController and UpgradeController entirely
 -- Owns: ProximityPrompt connections on pads and machines
 --       StatsPanel open/close logic
---       Fires MachineEvent(BUILD) and MachineEvent(UPGRADE) to server
+--       Fires MachineEvent(BUILD), MachineEvent(UPGRADE), MachineEvent(SERVICE)
 -- Does not: validate affordability, calculate income,
 --           update money UI, know game rules
+-- CHANGED: active machines now have two prompts — ServicePrompt (E),
+--          fired instantly with no menu, and UpgradePrompt (F), which
+--          keeps the original StatsPanel flow unchanged
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
@@ -47,6 +50,14 @@ local function requestBuild(machineType : string, padId : string)
         action      = "BUILD",
         machineType = machineType,
         padId       = padId,
+    })
+end
+
+-- Fires SERVICE event to server — instant, no menu, no confirmation
+local function requestService(padId : string)
+    MachineEvent:FireServer({
+        action = "SERVICE",
+        padId  = padId,
     })
 end
 
@@ -100,8 +111,15 @@ local function openStatsPanel(
     end
 end
 
--- Connects a ProximityPrompt on a built machine to open StatsPanel
-local function connectMachinePrompt(prompt : ProximityPrompt, padId : string)
+-- Connects the Service prompt (E) — fires immediately, no menu involved
+local function connectServicePrompt(prompt : ProximityPrompt, padId : string)
+    prompt.Triggered:Connect(function()
+        requestService(padId)
+    end)
+end
+
+-- Connects the Upgrade/Inspect prompt (F) — opens the StatsPanel
+local function connectUpgradePrompt(prompt : ProximityPrompt, padId : string)
     prompt.Triggered:Connect(function()
         -- Extract machineType from ObjectText
         -- "Harvester [A]" → "Harvester", "Assembler" → "Assembler"
@@ -115,23 +133,27 @@ local function connectMachinePrompt(prompt : ProximityPrompt, padId : string)
     end)
 end
 
--- Watches a machine part for a ProximityPrompt to be added
--- Called when machine part appears on pad (UNDER_CONSTRUCTION state)
--- Prompt appears after construction completes (ACTIVE state)
+-- Watches a machine part for its two ProximityPrompts (ServicePrompt,
+-- UpgradePrompt) and connects each to the right handler as it appears.
+-- Checks existing children first, then keeps listening — order between
+-- the two isn't guaranteed since MachineSpawnService adds them one
+-- after another in the same frame.
 local function watchMachinePartForPrompt(machinePart : BasePart, padId : string)
-    -- Check if prompt already exists (rare but guard for it)
-    local existing = machinePart:FindFirstChildOfClass("ProximityPrompt")
-    if existing then
-        connectMachinePrompt(existing, padId)
-        return
+    local function tryConnect(child : Instance)
+        if not child:IsA("ProximityPrompt") then return end
+
+        if child.Name == "ServicePrompt" then
+            connectServicePrompt(child, padId)
+        elseif child.Name == "UpgradePrompt" then
+            connectUpgradePrompt(child, padId)
+        end
     end
 
-    -- Watch for prompt to be added after construction completes
-    machinePart.ChildAdded:Connect(function(child)
-        if child:IsA("ProximityPrompt") then
-            connectMachinePrompt(child, padId)
-        end
-    end)
+    for _, child in ipairs(machinePart:GetChildren()) do
+        tryConnect(child)
+    end
+
+    machinePart.ChildAdded:Connect(tryConnect)
 end
 
 -- Connects ProximityPrompt on an empty pad for building
@@ -147,7 +169,7 @@ local function connectPadPrompt(padPart : BasePart, machineType : string)
     end)
 
     -- Watch for machine part being added to this pad
-    -- When it appears, connect its inspect prompt
+    -- When it appears, connect its two prompts
     padPart.ChildAdded:Connect(function(child)
         if child:IsA("BasePart") then
             watchMachinePartForPrompt(child, padPart.Name)
@@ -169,8 +191,6 @@ local function connectPlotPads(plotModel : Model)
     end
 end
 
--- Searches the Plots folder for the model with OwnerId matching this player
--- Polls until found or timeout reached
 -- Searches the Plots folder for the model with OwnerId matching this player.
 -- Waits indefinitely — there's no fixed upper bound on how long a player
 -- may sit in the lobby before a match actually starts, and this runs in
