@@ -7,6 +7,6 @@ return {
     EFFICIENCY_FLOOR      = 50,    -- steady decay never drops below this
     WARNING_THRESHOLD     = 60,    -- below this, show the visual warning indicator
 
-    BREAKDOWN_CHANCE_PER_TICK = 0.002,  -- chance per second a healthy machine fully breaks
+    BREAKDOWN_CHANCE_PER_TICK = 0.02,  -- chance per second a healthy machine fully breaks
     BREAKDOWN_EFFICIENCY      = 0,      -- efficiency set to this when a breakdown hits
 }

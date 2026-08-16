@@ -200,6 +200,7 @@ function MachineSpawnService.setMachineActive(
     servicePrompt.MaxActivationDistance = PlotConfig.PROMPT_DISTANCE
     servicePrompt.HoldDuration          = PlotConfig.PROMPT_HOLD_DURATION
     servicePrompt.Parent                = part
+    servicePrompt.UIOffset = Vector2.new(0, -40)
 
     -- Upgrade/inspect prompt (F) — opens the StatsPanel
     local upgradePrompt                 = Instance.new("ProximityPrompt")
@@ -210,6 +211,7 @@ function MachineSpawnService.setMachineActive(
     upgradePrompt.MaxActivationDistance = PlotConfig.PROMPT_DISTANCE
     upgradePrompt.HoldDuration          = PlotConfig.PROMPT_HOLD_DURATION
     upgradePrompt.Parent                = part
+    upgradePrompt.UIOffset = Vector2.new(0, 40)
 
     -- Both prompts parented to part trigger PadController.ChildAdded
     -- PadController connects the right handler to each by name

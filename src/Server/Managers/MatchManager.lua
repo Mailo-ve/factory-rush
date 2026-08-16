@@ -173,7 +173,7 @@ local function startMatch(players : {Player})
 
     -- Start win detection, passing endMatch as the callback
     -- WinConditionManager calls this when a player crosses WIN_CONDITION
-    WinConditionManager.startChecking(function(winnerPlayer : Player)
+    WinConditionManager.startChecking(players, function(winnerPlayer : Player)
         endMatch(winnerPlayer)
     end)
 

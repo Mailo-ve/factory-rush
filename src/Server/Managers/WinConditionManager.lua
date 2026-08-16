@@ -34,10 +34,10 @@ local onWinnerFound = nil   -- callback set by startChecking
 -- Checks every player's money against the win threshold
 -- If any player has crossed it, fires GAME_WON and stops checking
 -- Returns true if a winner was found, false otherwise
-local function checkForWinner() : boolean
+local function checkForWinner(players : {Player}) : boolean
     local EconomyService = getEconomyService()
 
-    for _, player in ipairs(Players:GetPlayers()) do
+    for _, player in ipairs(players) do
         local money = EconomyService.getMoney(player)
 
         if money >= MatchConfig.WIN_CONDITION then
@@ -46,16 +46,12 @@ local function checkForWinner() : boolean
                 winnerName  = player.DisplayName,
                 winnerMoney = money,
             })
-
-            -- Notify MatchManager via callback, passing the winner
             if onWinnerFound then
                 onWinnerFound(player)
             end
-
             return true
         end
     end
-
     return false
 end
 
@@ -66,20 +62,19 @@ end
 -- Starts the win condition check loop
 -- Called by MatchManager when GameState transitions to PLAYING
 -- callback: function(winnerPlayer : Player) called when a winner is found
-function WinConditionManager.startChecking(callback : (Player) -> ())
+function WinConditionManager.startChecking(players : {Player}, callback : (Player) -> ())
     if isChecking then
         warn("WinConditionManager.startChecking: already checking, ignoring")
         return
     end
 
-    onWinnerFound   = callback
-    isChecking      = true
+    onWinnerFound = callback
+    isChecking    = true
 
     checkThread = task.spawn(function()
         while isChecking do
             task.wait(MatchConfig.ECONOMY_TICK_RATE)
-            local winnerFound = checkForWinner()
-            if winnerFound then
+            if checkForWinner(players) then
                 WinConditionManager.stopChecking()
             end
         end
