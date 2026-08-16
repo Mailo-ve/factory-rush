@@ -88,7 +88,6 @@ local function cleanupPlayer(player : Player, isWinner : boolean)
     DataService.savePlayerData(player, data)
     EconomyService.removePlayer(player)
 
-    MachineService.removePlayer(player)
     PadService.releaseAllPads(player)
     MachineSpawnService.removePlayer(player)
 
@@ -106,7 +105,7 @@ local function endMatch(winnerPlayer : Player?)
     if currentState ~= GameState.PLAYING then return end
 
     EconomyService.stopTick()
-    getPadService().stopDecayTick()
+    PadService().stopDecayTick()
     WinConditionManager.stopChecking()
 
     if matchTimerThread and coroutine.running() ~= matchTimerThread then
@@ -169,7 +168,7 @@ local function startMatch(players : {Player})
 
     -- Start the economy tick
     EconomyService.startTick()
-    getPadService().startDecayTick()
+    PadService().startDecayTick()
 
     -- Start win detection, passing endMatch as the callback
     -- WinConditionManager calls this when a player crosses WIN_CONDITION

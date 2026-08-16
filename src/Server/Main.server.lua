@@ -17,8 +17,7 @@ local MachineEventHandler   = require(ServerScriptService.Server.Network.Machine
 local MatchEventHandler     = require(ServerScriptService.Server.Network.MatchEventHandler)
 local EconomyEventHandler   = require(ServerScriptService.Server.Network.EconomyEventHandler)
 
-local MatchManager = require(ServerScriptService.Server.Managers.MatchManager)
-local QueueManager = require(ServerScriptService.Server.Managers.QueueManager)
+local QueueManager          = require(ServerScriptService.Server.Managers.QueueManager)
 
 -- Services are not initialized here directly
 -- They are initialized by Managers at the correct point in the match lifecycle
