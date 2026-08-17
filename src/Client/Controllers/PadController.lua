@@ -235,9 +235,18 @@ end
 -- Runs in a background thread so it doesn't block Main.client.lua startup
 function PadController.init()
     task.spawn(function()
-        local plotModel = findPlayerPlot()
-        if not plotModel then return end
-        connectPlotPads(plotModel)
+        while true do
+            local plotModel = findPlayerPlot()
+            if not plotModel then
+                task.wait(1)
+                continue
+            end
+
+            connectPlotPads(plotModel)
+
+            plotModel.Destroying:Wait()
+            task.wait()  -- let destruction fully finish before searching again
+        end
     end)
 end
 
