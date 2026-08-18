@@ -9,6 +9,11 @@
 --          startDecayTick, stopDecayTick
 -- Does not: spawn visuals, calculate income, handle purchases,
 --           know anything about the physical world
+-- CHANGED: steady decay is no longer automatic — a healthy machine now
+--          rolls a chance each tick to START decaying (isDecaying flag),
+--          same as it already rolled a chance to fully break down.
+--          Once decaying, it loses efficiency every tick as before,
+--          until serviced (which also clears isDecaying).
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage  = game:GetService("ReplicatedStorage")
@@ -32,6 +37,7 @@ local PadService = {}
 --     machineType : string?,  nil when EMPTY
 --     efficiency  : number,   0-100, only meaningful once ACTIVE
 --     upgraded    : boolean,  has THIS specific pad been individually upgraded
+--     isDecaying  : boolean,  has THIS pad started losing efficiency yet
 -- }
 local playerPads = {}
 
@@ -55,11 +61,12 @@ local function generateAllPadIds() : {string}
     return padIds
 end
 
--- Decays every ACTIVE pad for every player by one tick's worth.
--- Rolls for a random full breakdown first; if that doesn't hit,
--- applies normal gradual decay clamped at the floor. A pad already
--- at/below breakdown efficiency is left alone — only servicing
--- brings it back up, it does not recover on its own.
+-- Processes one tick for every ACTIVE pad for every player:
+--   1. Roll for a full breakdown — overrides everything if it hits
+--   2. If not already decaying, roll for decay onset
+--   3. If decaying, lose one tick's worth of efficiency, clamped at the floor
+-- A pad already at/below breakdown efficiency is left alone — only
+-- servicing brings it back up, it does not recover on its own.
 local function decayAllPads()
     for _, pads in pairs(playerPads) do
         for _, record in pairs(pads) do
@@ -68,11 +75,22 @@ local function decayAllPads()
             then
                 if math.random() < MaintenanceConfig.BREAKDOWN_CHANCE_PER_TICK then
                     record.efficiency = MaintenanceConfig.BREAKDOWN_EFFICIENCY
-                elseif record.efficiency > MaintenanceConfig.EFFICIENCY_FLOOR then
-                    record.efficiency = math.max(
-                        MaintenanceConfig.EFFICIENCY_FLOOR,
-                        record.efficiency - MaintenanceConfig.DECAY_RATE
-                    )
+                    record.isDecaying = false
+                else
+                    if not record.isDecaying
+                        and math.random() < MaintenanceConfig.DECAY_ONSET_CHANCE_PER_TICK
+                    then
+                        record.isDecaying = true
+                    end
+
+                    if record.isDecaying
+                        and record.efficiency > MaintenanceConfig.EFFICIENCY_FLOOR
+                    then
+                        record.efficiency = math.max(
+                            MaintenanceConfig.EFFICIENCY_FLOOR,
+                            record.efficiency - MaintenanceConfig.DECAY_RATE
+                        )
+                    end
                 end
             end
         end
@@ -96,6 +114,7 @@ function PadService.initPads(player : Player)
             machineType = nil,
             efficiency  = 0,
             upgraded    = false,
+            isDecaying  = false,
         }
     end
 
@@ -153,8 +172,8 @@ function PadService.occupyPad(player : Player, padId : string, machineType : str
 end
 
 -- Transitions a pad from UNDER_CONSTRUCTION to ACTIVE
--- Also (re)sets efficiency to full and clears any prior upgrade flag —
--- this is a freshly built machine
+-- Also (re)sets efficiency to full and clears any prior upgrade/decay
+-- flags — this is a freshly built machine
 function PadService.setPadActive(player : Player, padId : string)
     local pads = playerPads[player.UserId]
     assert(
@@ -163,9 +182,10 @@ function PadService.setPadActive(player : Player, padId : string)
         .. " for " .. player.DisplayName
     )
 
-    pads[padId].state      = PadState.ACTIVE
+    pads[padId].state       = PadState.ACTIVE
     pads[padId].efficiency  = MaintenanceConfig.STARTING_EFFICIENCY
     pads[padId].upgraded    = false
+    pads[padId].isDecaying  = false
 end
 
 function PadService.releasePad(player : Player, padId : string)
@@ -176,6 +196,7 @@ function PadService.releasePad(player : Player, padId : string)
     pads[padId].machineType = nil
     pads[padId].efficiency  = 0
     pads[padId].upgraded    = false
+    pads[padId].isDecaying  = false
 end
 
 function PadService.releaseAllPads(player : Player)
@@ -228,19 +249,20 @@ function PadService.setPadUpgraded(player : Player, padId : string)
     pads[padId].upgraded = true
 end
 
--- Resets one pad's efficiency to full. Returns false if the pad
--- doesn't exist or isn't currently ACTIVE (nothing to service).
+-- Resets one pad's efficiency to full and clears its decay state.
+-- Returns false if the pad doesn't exist or isn't currently ACTIVE.
 function PadService.serviceMachine(player : Player, padId : string) : boolean
     local pads = playerPads[player.UserId]
     if not pads or not pads[padId] then return false end
     if pads[padId].state ~= PadState.ACTIVE then return false end
 
-    pads[padId].efficiency = MaintenanceConfig.STARTING_EFFICIENCY
+    pads[padId].efficiency  = MaintenanceConfig.STARTING_EFFICIENCY
+    pads[padId].isDecaying  = false
     return true
 end
 
--- Starts the decay tick. After each decay pass, tells MachineService
--- to recompute income for every player with at least one pad on record,
+-- Starts the decay tick. After each pass, tells MachineService to
+-- recompute income for every player with at least one pad on record,
 -- since their efficiency (and therefore income) may have just changed.
 function PadService.startDecayTick()
     if decayThread then

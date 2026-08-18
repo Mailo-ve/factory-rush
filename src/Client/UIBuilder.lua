@@ -198,7 +198,7 @@ local function buildWinScreen()
         COLORS.background, 0.3)
 
     local card = makeFrame(overlay, "Card",
-        UDim2.new(0.5, -120, 0, 20),
+        UDim2.new(0.5, -200, 0, 20),   -- was -120
         UDim2.new(0, 400, 0, 240),
         COLORS.panel, 0)
     addCorner(card, 16)

@@ -245,6 +245,9 @@ end
 
 -- Updates the ServicePrompt's displayed efficiency
 -- Called by PadService's decay tick whenever efficiency changes
+-- Updates the ServicePrompt's displayed efficiency and, when the
+-- machine is fully broken down, its required hold duration
+-- Called by PadService's decay tick whenever efficiency changes
 function MachineSpawnService.updateEfficiencyDisplay(
     player      : Player,
     padId       : string,
@@ -261,10 +264,15 @@ function MachineSpawnService.updateEfficiencyDisplay(
 
     local rounded = math.floor(efficiency + 0.5)
 
-    if efficiency < MaintenanceConfig.WARNING_THRESHOLD then
-        prompt.ObjectText = "⚠ Efficiency: " .. rounded .. "% — needs service"
+    if efficiency <= MaintenanceConfig.BREAKDOWN_EFFICIENCY then
+        prompt.ObjectText   = "⚠ Broken down — hold to repair"
+        prompt.HoldDuration = MaintenanceConfig.BROKEN_HOLD_DURATION
+    elseif efficiency < MaintenanceConfig.WARNING_THRESHOLD then
+        prompt.ObjectText   = "⚠ Efficiency: " .. rounded .. "% — needs service"
+        prompt.HoldDuration = PlotConfig.PROMPT_HOLD_DURATION
     else
-        prompt.ObjectText = "Efficiency: " .. rounded .. "%"
+        prompt.ObjectText   = "Efficiency: " .. rounded .. "%"
+        prompt.HoldDuration = PlotConfig.PROMPT_HOLD_DURATION
     end
 end
 

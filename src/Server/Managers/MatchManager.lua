@@ -123,6 +123,7 @@ local function endMatch(winnerPlayer : Player?)
 
     PlotManager.releaseAllPlots()
     PlotSetup.despawnAllPlots()
+    getResourceService().stopSpawning()
 
     task.delay(10, function()
         for _, player in ipairs(finishedPlayers) do
@@ -169,6 +170,7 @@ local function startMatch(players : {Player})
     -- Start the economy tick
     EconomyService.startTick()
     PadService.startDecayTick()
+    getResourceService().startSpawning()
 
     -- Start win detection, passing endMatch as the callback
     -- WinConditionManager calls this when a player crosses WIN_CONDITION
