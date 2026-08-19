@@ -81,8 +81,10 @@ function PlotSetup.spawnPlot(player : Player, plotId : string) : Model?
     local primaryPart = plotModel:FindFirstChild("Platform")
     if primaryPart then
         plotModel.PrimaryPart = primaryPart
+
+        local rotationY = (position.Z < 0) and 180 or 0
         plotModel:SetPrimaryPartCFrame(
-            CFrame.new(position)
+            CFrame.new(position) * CFrame.Angles(0, math.rad(rotationY), 0)
         )
     end
 
