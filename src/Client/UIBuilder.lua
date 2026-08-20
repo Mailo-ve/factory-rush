@@ -230,7 +230,7 @@ end
 
 local function buildMoneyDisplay(hud)
     local moneyFrame = makeFrame(hud, "MoneyDisplay",
-        UDim2.new(0.5, -100, 0, 12),
+        UDim2.new(0.5, -100, 0, 4),
         UDim2.new(0, 200, 0, 72),
         COLORS.panel, 0)
     addCorner(moneyFrame, 10)
@@ -249,7 +249,7 @@ end
 
 local function buildLeaderboard(hud)
     local frame = makeFrame(hud, "Leaderboard",
-        UDim2.new(1, -216, 0, 16),
+        UDim2.new(1, -216, 0, 2),
         UDim2.new(0, 200, 0, 0),
         COLORS.panel, 0)
     frame.AutomaticSize = Enum.AutomaticSize.Y
