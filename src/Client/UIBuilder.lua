@@ -204,11 +204,11 @@ local function buildWinScreen()
     addCorner(card, 16)
     addPadding(card, 28)
 
-    local trophy = makeLabel(card, "Trophy", "🏆",
-        UDim2.new(0, 0, 0, 0),
-        UDim2.new(1, 0, 0.25, 0),
-        40, COLORS.text, FONTS.header)
-    trophy.TextXAlignment = Enum.TextXAlignment.Center
+--   local trophy = makeLabel(card, "Trophy", "🏆",
+--        UDim2.new(0, 0, 0, 0),
+--        UDim2.new(1, 0, 0.25, 0),
+--        40, COLORS.text, FONTS.header)
+--    trophy.TextXAlignment = Enum.TextXAlignment.Center
 
     local winLabel = makeLabel(card, "WinLabel", "",
         UDim2.new(0, 0, 0.3, 0),
@@ -230,7 +230,7 @@ end
 
 local function buildMoneyDisplay(hud)
     local moneyFrame = makeFrame(hud, "MoneyDisplay",
-        UDim2.new(0.5, -100, 0, 4),
+        UDim2.new(0.5, -100, 0, 20),
         UDim2.new(0, 200, 0, 72),
         COLORS.panel, 0)
     addCorner(moneyFrame, 10)
@@ -249,7 +249,7 @@ end
 
 local function buildLeaderboard(hud)
     local frame = makeFrame(hud, "Leaderboard",
-        UDim2.new(1, -216, 0, 2),
+        UDim2.new(1, -216, 0, 12),
         UDim2.new(0, 200, 0, 0),
         COLORS.panel, 0)
     frame.AutomaticSize = Enum.AutomaticSize.Y
@@ -334,7 +334,7 @@ end
 
 local function buildHUD()
     local gui = makeScreenGui("HUD", false)
-    gui.IgnoreGuiInset = false
+    gui.IgnoreGuiInset = true 
 
     buildMoneyDisplay(gui)
     buildLeaderboard(gui)
