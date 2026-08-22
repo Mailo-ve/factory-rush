@@ -22,6 +22,9 @@ end
 local function getMachineSpawnService()
     return require(ServerScriptService.Server.Services.MachineSpawnService)
 end
+local function getModifierManager()
+    return require(ServerScriptService.Server.Managers.ModifierManager)
+end
 
 local MachineService = {}
 
@@ -43,8 +46,9 @@ local function runConstructionTimer(
     padId       : string,
     machineType : string
 )
-    task.delay(PlotConfig.CONSTRUCTION_DURATION, function()
-        -- Guard: player may have left during construction
+    local duration = PlotConfig.CONSTRUCTION_DURATION * getModifierManager().getConstructionMultiplier()
+
+    task.delay(duration, function()
         if not playerMachines[player.UserId] then return end
 
         getPadService().setPadActive(player, padId)
@@ -78,12 +82,14 @@ function MachineService.recalculateIncome(player : Player)
     local machines = playerMachines[player.UserId]
     if not machines then return end
 
-    local PadService = getPadService()
+    local PadService      = getPadService()
+    local ModifierManager = getModifierManager()
 
     local harvesterIncome = 0
     if machines.Harvester then
         local efficiency = PadService.getAverageEfficiency(player, "Harvester") / 100
-        harvesterIncome = machines.Harvester:getSelfIncome() * efficiency
+        local modifier    = ModifierManager.getIncomeMultiplier("Harvester")
+        harvesterIncome    = machines.Harvester:getSelfIncome() * efficiency * modifier
     end
 
     local harvesterMultiplier = 1.0
@@ -96,16 +102,18 @@ function MachineService.recalculateIncome(player : Player)
     local assemblerIncome = 0
     if machines.Assembler then
         local efficiency = PadService.getAverageEfficiency(player, "Assembler") / 100
-        assemblerIncome = machines.Assembler:getSelfIncome() * efficiency
+        local modifier    = ModifierManager.getIncomeMultiplier("Assembler")
+        assemblerIncome    = machines.Assembler:getSelfIncome() * efficiency * modifier
     end
 
     local baseIncome = boostedHarvesterIncome + assemblerIncome
 
     local compoundBonus = 0
     if machines.Fabricator then
-        local efficiency = PadService.getAverageEfficiency(player, "Fabricator") / 100
-        local compoundRate = machines.Fabricator:getCompoundRate() * efficiency
-        compoundBonus = baseIncome * compoundRate
+        local efficiency  = PadService.getAverageEfficiency(player, "Fabricator") / 100
+        local modifier     = ModifierManager.getIncomeMultiplier("Fabricator")
+        local compoundRate = machines.Fabricator:getCompoundRate() * efficiency * modifier
+        compoundBonus       = baseIncome * compoundRate
     end
 
     local totalIncome = baseIncome + compoundBonus

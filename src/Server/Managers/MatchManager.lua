@@ -25,6 +25,7 @@ local MachineSpawnService   = require(ServerScriptService.Server.Services.Machin
 local PadService            = require(ServerScriptService.Server.Services.PadService)
 
 local ResourceService       = require(ServerScriptService.Server.Services.ResourceService)
+local ModifierManager = require(ServerScriptService.Server.Managers.ModifierManager)
 
 local MatchManager = {}
 
@@ -66,12 +67,26 @@ end
 -- Transitions to a new GameState and notifies all clients
 local function transitionTo(newState : string, targetPlayers : {Player}?)
     currentState = newState
+
+    local payload = {
+        action   = "STATE_CHANGED",
+        newState = newState,
+    }
+
+    if newState == GameState.COUNTDOWN then
+        local modifier = ModifierManager.getCurrentModifier()
+        if modifier then
+            payload.modifierName        = modifier.name
+            payload.modifierDescription = modifier.description
+        end
+    end
+
     if targetPlayers then
         for _, player in ipairs(targetPlayers) do
-            MatchEvent:FireClient(player, { action = "STATE_CHANGED", newState = newState })
+            MatchEvent:FireClient(player, payload)
         end
     else
-        MatchEvent:FireAllClients({ action = "STATE_CHANGED", newState = newState })
+        MatchEvent:FireAllClients(payload)
     end
 end
 
@@ -109,6 +124,7 @@ local function endMatch(winnerPlayer : Player?)
     EconomyService.stopTick()
     PadService.stopDecayTick()
     WinConditionManager.stopChecking()
+    ModifierManager.clearModifier()
 
     if matchTimerThread and coroutine.running() ~= matchTimerThread then
         task.cancel(matchTimerThread)
@@ -199,6 +215,7 @@ function MatchManager.beginCountdown()
     local QueueManager = require(ServerScriptService.Server.Managers.QueueManager)
     local queuedAtStart = QueueManager.getQueueSnapshot()
 
+    ModifierManager.rollModifier()
     transitionTo(GameState.COUNTDOWN, queuedAtStart)
 
     countdownThread = task.spawn(function()

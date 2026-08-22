@@ -167,22 +167,29 @@ local function buildCountdownScreen()
         COLORS.background, 0.4)
 
     local card = makeFrame(overlay, "Card",
-        UDim2.new(0.5, -120, 0.5, -120),
-        UDim2.new(0, 240, 0, 240),
+        UDim2.new(0.5, -160, 0.5, -140),
+        UDim2.new(0, 320, 0, 280),
         COLORS.panel, 0)
     addCorner(card, 16)
 
     local title = makeLabel(card, "Title", "Match Starting",
-        UDim2.new(0, 0, 0.05, 0),
-        UDim2.new(1, 0, 0.25, 0),
+        UDim2.new(0, 0, 0.04, 0),
+        UDim2.new(1, 0, 0.18, 0),
         18, COLORS.subtext, FONTS.header)
     title.TextXAlignment = Enum.TextXAlignment.Center
 
     local countLabel = makeLabel(card, "CountdownLabel", "10",
-        UDim2.new(0, 0, 0.3, 0),
-        UDim2.new(1, 0, 0.6, 0),
+        UDim2.new(0, 0, 0.22, 0),
+        UDim2.new(1, 0, 0.5, 0),
         80, COLORS.accent, FONTS.header)
     countLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+    local modifierLabel = makeLabel(card, "ModifierLabel", "",
+        UDim2.new(0, 12, 0.74, 0),
+        UDim2.new(1, -24, 0.24, 0),
+        14, COLORS.subtext, FONTS.body)
+    modifierLabel.TextXAlignment = Enum.TextXAlignment.Center
+    modifierLabel.TextWrapped     = true
 end
 
 -- ─────────────────────────────────────────

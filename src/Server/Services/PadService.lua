@@ -67,18 +67,18 @@ end
 --   3. If decaying, lose one tick's worth of efficiency, clamped at the floor
 -- A pad already at/below breakdown efficiency is left alone — only
 -- servicing brings it back up, it does not recover on its own.
-local function decayAllPads()
+local function decayAllPads(maintenanceMultiplier : number)
     for _, pads in pairs(playerPads) do
         for _, record in pairs(pads) do
             if record.state == PadState.ACTIVE
                 and record.efficiency > MaintenanceConfig.BREAKDOWN_EFFICIENCY
             then
-                if math.random() < MaintenanceConfig.BREAKDOWN_CHANCE_PER_TICK then
+                if math.random() < MaintenanceConfig.BREAKDOWN_CHANCE_PER_TICK * maintenanceMultiplier then
                     record.efficiency = MaintenanceConfig.BREAKDOWN_EFFICIENCY
                     record.isDecaying = false
                 else
                     if not record.isDecaying
-                        and math.random() < MaintenanceConfig.DECAY_ONSET_CHANCE_PER_TICK
+                        and math.random() < MaintenanceConfig.DECAY_ONSET_CHANCE_PER_TICK * maintenanceMultiplier
                     then
                         record.isDecaying = true
                     end
@@ -88,7 +88,7 @@ local function decayAllPads()
                     then
                         record.efficiency = math.max(
                             MaintenanceConfig.EFFICIENCY_FLOOR,
-                            record.efficiency - MaintenanceConfig.DECAY_RATE
+                            record.efficiency - (MaintenanceConfig.DECAY_RATE * maintenanceMultiplier)
                         )
                     end
                 end
@@ -272,11 +272,12 @@ function PadService.startDecayTick()
 
     local MachineService      = require(ServerScriptService.Server.Services.MachineService)
     local MachineSpawnService = require(ServerScriptService.Server.Services.MachineSpawnService)
+    local ModifierManager      = require(ServerScriptService.Server.Managers.ModifierManager)
 
     decayThread = task.spawn(function()
         while true do
             task.wait(MatchConfig.ECONOMY_TICK_RATE)
-            decayAllPads()
+            decayAllPads(ModifierManager.getMaintenanceMultiplier())
 
             for userId, pads in pairs(playerPads) do
                 local player = Players:GetPlayerByUserId(userId)

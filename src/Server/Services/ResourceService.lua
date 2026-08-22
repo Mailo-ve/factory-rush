@@ -10,12 +10,16 @@
 local ReplicatedStorage   = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local ResourceConfig = require(ReplicatedStorage.Shared.Config.ResourceConfig)
+local ResourceConfig  = require(ReplicatedStorage.Shared.Config.ResourceConfig)
 local PlotConfig      = require(ReplicatedStorage.Shared.Config.PlotConfig)
+
+local ModifierManager = require(ServerScriptService.Server.Managers.ModifierManager)
 
 local function getEconomyService()
     return require(ServerScriptService.Server.Services.EconomyService)
 end
+
+
 
 local ResourceService = {}
 
@@ -65,7 +69,10 @@ local function spawnNode()
     end
 
     local spawnPoint = points[math.random(1, #points)]
-    local payout      = math.random(ResourceConfig.PAYOUT_MIN, ResourceConfig.PAYOUT_MAX)
+    local payout = math.floor(
+        math.random(ResourceConfig.PAYOUT_MIN, ResourceConfig.PAYOUT_MAX)
+        * ModifierManager.getResourceMultiplier()
+    )
 
     local node          = Instance.new("Part")
     node.Name             = "ResourceNode"

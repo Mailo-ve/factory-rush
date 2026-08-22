@@ -151,10 +151,16 @@ local function onStateChanged(payload)
     local newState = payload.newState
 
     if newState == GameState.COUNTDOWN then
-        if ui.countdownScreen then 
-            ui.countdownScreen.Enabled = true
+        if ui.countdownScreen then ui.countdownScreen.Enabled = true end
+        if ui.modifierLabel then
+            if payload.modifierName then
+                ui.modifierLabel.Text = payload.modifierName .. ": " .. payload.modifierDescription
+            else
+                ui.modifierLabel.Text = ""
+            end
         end
-        startCountdownDisplay() 
+        startCountdownDisplay()
+    end 
     elseif newState == GameState.PLAYING then
         if ui.hudScreen then ui.hudScreen.Enabled = true end
     elseif newState == GameState.ENDING then
@@ -263,6 +269,7 @@ local function collectUIReferences()
     ui.countdownScreen   = playerGui:WaitForChild("CountdownScreen")
     local countdownCard  = ui.countdownScreen:WaitForChild("Overlay"):WaitForChild("Card")
     ui.countdownLabel    = countdownCard:WaitForChild("CountdownLabel")
+    ui.modifierLabel = countdownCard:WaitForChild("ModifierLabel")
 
     -- Reference to Subtitle
     local waitingCard  = ui.waitingScreen:WaitForChild("Card")
