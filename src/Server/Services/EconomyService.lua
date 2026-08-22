@@ -6,11 +6,12 @@
 --           persist data, check win conditions
 
 local ReplicatedStorage  = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local MatchConfig        = require(ReplicatedStorage.Shared.Config.MatchConfig)
 local EconomyEvent       = ReplicatedStorage.Shared.RemoteEvents.EconomyEvent
 local LeaderboardEvent   = ReplicatedStorage.Shared.RemoteEvents.LeaderboardEvent
-local ModifierManager = require(ServerScriptService.Server.Managers.ModifierManager)
+local ModifierManager    = require(ServerScriptService.Server.Managers.ModifierManager)
 
 local EconomyService = {}
 

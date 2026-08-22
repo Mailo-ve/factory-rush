@@ -159,15 +159,12 @@ local function onStateChanged(payload)
                 ui.modifierLabel.Text = ""
             end
         end
-        startCountdownDisplay()
-    end 
+        startCountdownDisplay() 
     elseif newState == GameState.PLAYING then
         if ui.hudScreen then ui.hudScreen.Enabled = true end
     elseif newState == GameState.ENDING then
         if ui.winScreen then ui.winScreen.Enabled = true end
     end
-
-
 
 end
 

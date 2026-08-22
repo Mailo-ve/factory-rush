@@ -41,11 +41,13 @@ local function checkForWinner(players : {Player}) : boolean
         local money = EconomyService.getMoney(player)
 
         if money >= MatchConfig.WIN_CONDITION then
-            MatchEvent:FireAllClients({
-                action      = "GAME_WON",
-                winnerName  = player.DisplayName,
-                winnerMoney = money,
-            })
+            for _, matchPlayer in ipairs(players) do
+                MatchEvent:FireClient(matchPlayer, {
+                    action      = "GAME_WON",
+                    winnerName  = player.DisplayName,
+                    winnerMoney = money,
+                })
+            end
             if onWinnerFound then
                 onWinnerFound(player)
             end

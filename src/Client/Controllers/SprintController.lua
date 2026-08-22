@@ -1,5 +1,5 @@
-local UserInputService = game:GetService("UserInputService")
-local Players          = game:GetService("Players")
+local ContextActionService = game:GetService("ContextActionService")
+local Players               = game:GetService("Players")
 
 local SprintController = {}
 
@@ -12,28 +12,28 @@ local function getHumanoid()
     return character and character:FindFirstChildOfClass("Humanoid")
 end
 
-local function setSprinting(isSprinting : boolean)
+local function handleSprint(actionName, inputState)
     local humanoid = getHumanoid()
-    if humanoid then
-        humanoid.WalkSpeed = isSprinting and SPRINT_SPEED or WALK_SPEED
+    if not humanoid then return Enum.ContextActionResult.Pass end
+
+    if inputState == Enum.UserInputState.Begin then
+        humanoid.WalkSpeed = SPRINT_SPEED
+    elseif inputState == Enum.UserInputState.End then
+        humanoid.WalkSpeed = WALK_SPEED
     end
+
+    return Enum.ContextActionResult.Pass
 end
 
 function SprintController.init()
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.KeyCode == Enum.KeyCode.LeftShift
-            or input.KeyCode == Enum.KeyCode.LeftControl then
-            setSprinting(true)
-        end
-    end)
-
-    UserInputService.InputEnded:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.LeftShift
-            or input.KeyCode == Enum.KeyCode.LeftControl then
-            setSprinting(false)
-        end
-    end)
+    ContextActionService:BindAction(
+        "Sprint",
+        handleSprint,
+        true,  -- createTouchButton
+        Enum.KeyCode.LeftShift,
+        Enum.KeyCode.LeftControl
+    )
+    ContextActionService:SetTitle("Sprint", "Sprint")
 end
 
 return SprintController
