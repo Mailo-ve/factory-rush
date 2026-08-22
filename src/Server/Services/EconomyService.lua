@@ -10,6 +10,7 @@ local ReplicatedStorage  = game:GetService("ReplicatedStorage")
 local MatchConfig        = require(ReplicatedStorage.Shared.Config.MatchConfig)
 local EconomyEvent       = ReplicatedStorage.Shared.RemoteEvents.EconomyEvent
 local LeaderboardEvent   = ReplicatedStorage.Shared.RemoteEvents.LeaderboardEvent
+local ModifierManager = require(ServerScriptService.Server.Managers.ModifierManager)
 
 local EconomyService = {}
 
@@ -85,14 +86,17 @@ local function processTick()
 
     for userId, data in pairs(playerEconomy) do
         if data.currentIncome > 0 then
-            -- math.floor keeps money as a whole number
-            -- avoids floating point display issues in UI ($999999.9999...)
             local earned = math.floor(data.currentIncome * multiplier)
             data.money   = data.money + earned
             fireMoneyUpdate(userId)
         end
-    end
 
+        local marketBossReward = ModifierManager.checkMarketBoss(data.player, data.money)
+        if marketBossReward then
+            data.money = data.money + marketBossReward
+            fireMoneyUpdate(userId)
+        end
+    end
     -- Leaderboard fires once per tick to all clients, not per player
     fireLeaderboardUpdate()
 end
@@ -109,12 +113,13 @@ function EconomyService.initPlayer(player : Player)
         "EconomyService.initPlayer: player already initialized: " .. player.DisplayName
     )
 
+    local startingMoney = ModifierManager.getStartingMoney() or MatchConfig.STARTING_MONEY
+
     playerEconomy[player.UserId] = {
         player        = player,
-        money         = MatchConfig.STARTING_MONEY,
+        money         = startingMoney,
         currentIncome = 0,
     }
-
     -- Push initial state to client immediately so UI starts correctly
     fireMoneyUpdate(player.UserId)
 end
