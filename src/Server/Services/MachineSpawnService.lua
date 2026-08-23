@@ -230,16 +230,24 @@ function MachineSpawnService.updateUpgraded(
     if not data then return end
 
     local part = data.parts[padId]
-    if not part then return end
+    if part then
+        part.Material = Enum.Material.Neon
 
-    -- Neon material clearly signals this machine is upgraded
-    part.Material = Enum.Material.Neon
+        local prompt = part:FindFirstChild("UpgradePrompt")
+        if prompt then
+            prompt.ObjectText = machineType .. " [" .. branch .. "]"
+        end
+    end
 
-    -- Update the UpgradePrompt specifically — found by name now,
-    -- since ServicePrompt is also a ProximityPrompt on this part
-    local prompt = part:FindFirstChild("UpgradePrompt")
-    if prompt then
-        prompt.ObjectText = machineType .. " [" .. branch .. "]"
+    -- Tag every other same-type pad this player owns with a lock
+    -- marker, so their StatsPanel only offers the locked branch
+    for otherPadId, otherPart in pairs(data.parts) do
+        if otherPadId ~= padId and otherPadId:sub(1, #machineType) == machineType then
+            local otherPrompt = otherPart:FindFirstChild("UpgradePrompt")
+            if otherPrompt and not otherPrompt.ObjectText:find("%[") then
+                otherPrompt.ObjectText = machineType .. " (Locked: " .. branch .. ")"
+            end
+        end
     end
 end
 

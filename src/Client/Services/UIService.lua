@@ -164,8 +164,18 @@ local function onStateChanged(payload)
         if ui.hudScreen then ui.hudScreen.Enabled = true end
     elseif newState == GameState.ENDING then
         if ui.winScreen then ui.winScreen.Enabled = true end
+        if ui.standingsRows and payload.standings then
+            for i, row in ipairs(ui.standingsRows) do
+                local entry = payload.standings[i]
+                if entry then
+                    row.Text    = i .. ". " .. entry.name .. " — $" .. entry.money
+                    row.Visible = true
+                else
+                    row.Visible = false
+                end
+            end
+        end
     end
-
 end
 
 -- Called when server fires MatchEvent(GAME_WON)
@@ -279,6 +289,12 @@ local function collectUIReferences()
     local winCard        = ui.winScreen:WaitForChild("Overlay"):WaitForChild("Card")
     ui.winLabel          = winCard:WaitForChild("WinLabel")
 
+    ui.standingsRows = {}
+    local standingsList = winCard:WaitForChild("StandingsList")
+    for i = 1, 8 do
+        ui.standingsRows[i] = standingsList:WaitForChild("Row" .. i)
+    end
+
     -- StatsPanel
     local statsPanel            = hud:WaitForChild("StatsPanel")
     ui.statsPanel               = statsPanel
@@ -315,8 +331,9 @@ end
 -- isUpgraded: true hides buttons and shows status label instead
 -- Returns button references so PadController can connect upgrade logic
 function UIService.showStatsPanel(
-    machineType : string,
-    isUpgraded  : boolean
+    machineType   : string,
+    isUpgraded    : boolean,
+    lockedBranch   : string?
 )
     local upgradeConfig = UpgradeConfig[machineType]
 
@@ -329,16 +346,24 @@ function UIService.showStatsPanel(
         ui.statsUpgradeStatusLabel.Text     = "Already upgraded"
     else
         ui.statsUpgradeStatusLabel.Visible  = false
-        ui.statsUpgradeBranchA.Visible      = true
-        ui.statsUpgradeBranchB.Visible      = true
+
+        local showA = not lockedBranch or lockedBranch == "A"
+        local showB = not lockedBranch or lockedBranch == "B"
+
+        ui.statsUpgradeBranchA.Visible = showA
+        ui.statsUpgradeBranchB.Visible = showB
 
         if upgradeConfig then
-            ui.statsUpgradeBranchA.Text = upgradeConfig.A.name
-                .. "\n" .. upgradeConfig.A.description
-                .. "\nCost: $" .. upgradeConfig.cost
-            ui.statsUpgradeBranchB.Text = upgradeConfig.B.name
-                .. "\n" .. upgradeConfig.B.description
-                .. "\nCost: $" .. upgradeConfig.cost
+            if showA then
+                ui.statsUpgradeBranchA.Text = upgradeConfig.A.name
+                    .. "\n" .. upgradeConfig.A.description
+                    .. "\nCost: $" .. upgradeConfig.cost
+            end
+            if showB then
+                ui.statsUpgradeBranchB.Text = upgradeConfig.B.name
+                    .. "\n" .. upgradeConfig.B.description
+                    .. "\nCost: $" .. upgradeConfig.cost
+            end
         end
     end
 

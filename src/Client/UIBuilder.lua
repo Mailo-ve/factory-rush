@@ -205,28 +205,49 @@ local function buildWinScreen()
         COLORS.background, 0.3)
 
     local card = makeFrame(overlay, "Card",
-        UDim2.new(0.5, -200, 0, 20),   -- was -120
-        UDim2.new(0, 400, 0, 240),
+        UDim2.new(0.5, -200, 0, 20),
+        UDim2.new(0, 400, 0, 420),
         COLORS.panel, 0)
     addCorner(card, 16)
     addPadding(card, 28)
 
---   local trophy = makeLabel(card, "Trophy", "🏆",
---        UDim2.new(0, 0, 0, 0),
---        UDim2.new(1, 0, 0.25, 0),
---        40, COLORS.text, FONTS.header)
---    trophy.TextXAlignment = Enum.TextXAlignment.Center
-
     local winLabel = makeLabel(card, "WinLabel", "",
-        UDim2.new(0, 0, 0.3, 0),
-        UDim2.new(1, 0, 0.45, 0),
+        UDim2.new(0, 0, 0.05, 0),
+        UDim2.new(1, 0, 0.18, 0),
         20, COLORS.text, FONTS.header)
     winLabel.TextXAlignment = Enum.TextXAlignment.Center
     winLabel.TextWrapped    = true
 
+    local standingsList = Instance.new("Frame")
+    standingsList.Name                   = "StandingsList"
+    standingsList.BackgroundTransparency = 1
+    standingsList.Position                = UDim2.new(0, 0, 0.26, 0)
+    standingsList.Size                     = UDim2.new(1, 0, 0.58, 0)
+    standingsList.Parent                   = card
+
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding    = UDim.new(0, 4)
+    listLayout.Parent     = standingsList
+
+    for i = 1, 8 do
+        local row = Instance.new("TextLabel")
+        row.Name                    = "Row" .. i
+        row.Size                      = UDim2.new(1, 0, 0, 22)
+        row.BackgroundTransparency   = 1
+        row.Font                       = FONTS.body
+        row.TextSize                    = 14
+        row.TextColor3                   = COLORS.text
+        row.TextXAlignment                = Enum.TextXAlignment.Left
+        row.Text                           = ""
+        row.Visible                         = false
+        row.LayoutOrder                      = i
+        row.Parent                            = standingsList
+    end
+
     local sub = makeLabel(card, "SubLabel", "Next match starting soon...",
-        UDim2.new(0, 0, 0.78, 0),
-        UDim2.new(1, 0, 0.2, 0),
+        UDim2.new(0, 0, 0.88, 0),
+        UDim2.new(1, 0, 0.1, 0),
         14, COLORS.subtext, FONTS.body)
     sub.TextXAlignment = Enum.TextXAlignment.Center
 end

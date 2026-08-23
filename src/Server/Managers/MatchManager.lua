@@ -65,7 +65,7 @@ local function getActivePlayerSnapshot() : {Player}
 end
 
 -- Transitions to a new GameState and notifies all clients
-local function transitionTo(newState : string, targetPlayers : {Player}?)
+local function transitionTo(newState : string, targetPlayers : {Player}?, extraPayload : {[string]: any}?)
     currentState = newState
 
     local payload = {
@@ -78,6 +78,12 @@ local function transitionTo(newState : string, targetPlayers : {Player}?)
         if modifier then
             payload.modifierName        = modifier.name
             payload.modifierDescription = modifier.description
+        end
+    end
+
+    if extraPayload then
+        for key, value in pairs(extraPayload) do
+            payload[key] = value
         end
     end
 
@@ -132,7 +138,17 @@ local function endMatch(winnerPlayer : Player?)
     matchTimerThread = nil
 
     local finishedPlayers = getActivePlayerSnapshot()
-    transitionTo(GameState.ENDING, finishedPlayers)
+
+    local standings = {}
+    for _, player in ipairs(finishedPlayers) do
+        table.insert(standings, {
+            name  = player.DisplayName,
+            money = EconomyService.getMoney(player),
+        })
+    end
+    table.sort(standings, function(a, b) return a.money > b.money end)
+
+    transitionTo(GameState.ENDING, finishedPlayers, { standings = standings })
 
     for _, player in ipairs(finishedPlayers) do
         local isWinner = winnerPlayer ~= nil and player.UserId == winnerPlayer.UserId
@@ -145,7 +161,7 @@ local function endMatch(winnerPlayer : Player?)
 
     task.delay(10, function()
         for _, player in ipairs(finishedPlayers) do
-            if player.Parent then -- guard: they may have disconnected during results
+            if player.Parent then
                 PlotSetup.teleportPlayerToLobby(player)
             end
         end

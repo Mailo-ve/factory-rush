@@ -18,9 +18,9 @@ return {
     {
         id          = "PoorStart",
         name        = "Poor Start",
-        description = "Everyone starts with $25",
+        description = "Everyone starts with $67",
         effects     = {
-            { type = "startingMoney", value = 25 },
+            { type = "startingMoney", value = 67 },
         },
     },
     {

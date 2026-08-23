@@ -80,28 +80,34 @@ end
 -- Opens the StatsPanel for a built machine
 -- isUpgraded: detected from prompt ObjectText containing "["
 local function openStatsPanel(
-    machineType : string,
-    padId       : string,
-    isUpgraded  : boolean
+    machineType  : string,
+    padId        : string,
+    isUpgraded   : boolean,
+    lockedBranch  : string?
 )
     local UIService = getUIService()
-    UIService.showStatsPanel(machineType, isUpgraded)
+    UIService.showStatsPanel(machineType, isUpgraded, lockedBranch)
 
-    -- Connect upgrade buttons if not already upgraded
     if not isUpgraded then
         clearButtonConnections()
         local buttons = UIService.getStatsPanelButtons()
 
-        table.insert(activeBtnConnections,
-            buttons.branchA.Activated:Connect(function()
-                requestUpgrade(machineType, padId, "A")
-            end)
-        )
-        table.insert(activeBtnConnections,
-            buttons.branchB.Activated:Connect(function()
-                requestUpgrade(machineType, padId, "B")
-            end)
-        )
+        if not lockedBranch or lockedBranch == "A" then
+            table.insert(activeBtnConnections,
+                buttons.branchA.Activated:Connect(function()
+                    requestUpgrade(machineType, padId, "A")
+                end)
+            )
+        end
+
+        if not lockedBranch or lockedBranch == "B" then
+            table.insert(activeBtnConnections,
+                buttons.branchB.Activated:Connect(function()
+                    requestUpgrade(machineType, padId, "B")
+                end)
+            )
+        end
+
         table.insert(activeBtnConnections,
             buttons.close.Activated:Connect(function()
                 clearButtonConnections()
@@ -121,14 +127,16 @@ end
 -- Connects the Upgrade/Inspect prompt (F) — opens the StatsPanel
 local function connectUpgradePrompt(prompt : ProximityPrompt, padId : string)
     prompt.Triggered:Connect(function()
+
         -- Extract machineType from ObjectText
         -- "Harvester [A]" → "Harvester", "Assembler" → "Assembler"
         local objectText    = prompt.ObjectText
         local machineType   = objectText:match("^(%a+)")
         local isUpgraded    = objectText:find("%[") ~= nil
+        local lockedBranch  = objectText:match("Locked: (%a)")
 
         if machineType then
-            openStatsPanel(machineType, padId, isUpgraded)
+            openStatsPanel(machineType, padId, isUpgraded, lockedBranch)
         end
     end)
 end
