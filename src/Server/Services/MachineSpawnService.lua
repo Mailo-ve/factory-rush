@@ -6,17 +6,17 @@
 --          despawnMachine
 -- Does not: calculate income, manage pad states, handle purchases,
 --           know game rules, look up plot models itself
--- Note: MatchManager passes the plotModel into initPlayer
---       so this service never needs to call PlotManager
--- CHANGED: active machines now get TWO ProximityPrompts instead of one —
---          "ServicePrompt" (E, instant efficiency reset) and
---          "UpgradePrompt" (F, opens the StatsPanel) — found by .Name
---          from here on, not by class, since there are now two of them
+-- CHANGED: active machines are now cloned from real multi-part models
+--          in ServerStorage.MachineModels instead of a single colored
+--          Part. Each model needs a PrimaryPart, and optionally
+--          children named DamageEffect/SparkEffect (Fire or
+--          ParticleEmitter instances) that get toggled based on
+--          efficiency — see updateEfficiencyDisplay.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage      = game:GetService("ServerStorage")
 
 local PlotConfig        = require(ReplicatedStorage.Shared.Config.PlotConfig)
-local MachineConfig     = require(ReplicatedStorage.Shared.Config.MachineConfig)
 local MaintenanceConfig = require(ReplicatedStorage.Shared.Config.MaintenanceConfig)
 
 local MachineSpawnService = {}
@@ -29,36 +29,21 @@ local MachineSpawnService = {}
 -- Each entry:
 -- {
 --     plotModel : Model,       the player's plot clone in workspace
---     parts     : {[padId] = Part}   spawned machine Parts per pad
+--     parts     : {[padId] = Instance}   the placeholder Part during
+--         construction, replaced with the cloned Model once active
 -- }
 local playerData = {}
 
 -- ─────────────────────────────────────────
--- VISUAL DEFINITIONS
+-- CONSTRUCTION-PHASE PLACEHOLDER
 -- ─────────────────────────────────────────
 
--- Placeholder visuals per machine type
--- Replace with real Model assets in a later pass
-local MACHINE_VISUALS = {
-    Harvester = {
-        color    = BrickColor.new("Bright green"),
-        material = Enum.Material.SmoothPlastic,
-        size     = Vector3.new(4, 5, 4),
-    },
-    Assembler = {
-        color    = BrickColor.new("Bright blue"),
-        material = Enum.Material.SmoothPlastic,
-        size     = Vector3.new(5, 6, 5),
-    },
-    Fabricator = {
-        color    = BrickColor.new("Bright violet"),
-        material = Enum.Material.SmoothPlastic,
-        size     = Vector3.new(6, 8, 6),
-    },
+local PLACEHOLDER_SIZE = {
+    Harvester  = Vector3.new(4, 5, 4),
+    Assembler  = Vector3.new(5, 6, 5),
+    Fabricator = Vector3.new(6, 8, 6),
 }
 
--- UNDER_CONSTRUCTION state appearance
--- Yellow neon signals "being built" clearly
 local CONSTRUCTION_VISUAL = {
     color    = BrickColor.new("Bright yellow"),
     material = Enum.Material.Neon,
@@ -68,14 +53,12 @@ local CONSTRUCTION_VISUAL = {
 -- PRIVATE HELPERS
 -- ─────────────────────────────────────────
 
--- Finds a named pad Part inside the player's plot model
 local function getPadPart(userId : number, padId : string) : BasePart?
     local data = playerData[userId]
     if not data or not data.plotModel then return nil end
     return data.plotModel:FindFirstChild(padId)
 end
 
--- Positions a Part to sit centered on top of a pad Part
 local function positionOnPad(part : Part, pad : BasePart)
     part.Position = Vector3.new(
         pad.Position.X,
@@ -88,10 +71,6 @@ end
 -- PUBLIC API
 -- ─────────────────────────────────────────
 
--- Registers a player with their assigned plot model
--- plotModel: the cloned PlotTemplate model in workspace
--- Called by MatchManager after plot assignment
--- Passing plotModel here means this service never calls PlotManager
 function MachineSpawnService.initPlayer(player : Player, plotModel : Model)
     assert(
         not playerData[player.UserId],
@@ -103,17 +82,13 @@ function MachineSpawnService.initPlayer(player : Player, plotModel : Model)
     }
 end
 
--- Removes all tracking for a player
--- Physical models are destroyed automatically when the plot clone is destroyed
--- so we only need to clear the reference table here
 function MachineSpawnService.removePlayer(player : Player)
     playerData[player.UserId] = nil
 end
 
--- Spawns an UNDER_CONSTRUCTION placeholder on the pad
--- Called by MachineService immediately after purchase is committed
--- Visual: yellow neon box — clearly signals "being built"
--- ProximityPrompt is disabled during construction so player cannot interact
+-- Spawns an UNDER_CONSTRUCTION placeholder on the pad — unchanged
+-- from before, still a simple yellow neon box regardless of what
+-- the final model looks like
 function MachineSpawnService.spawnMachine(
     player      : Player,
     padId       : string,
@@ -133,41 +108,34 @@ function MachineSpawnService.spawnMachine(
         return
     end
 
-    local visual = MACHINE_VISUALS[machineType]
-    if not visual then
+    local size = PLACEHOLDER_SIZE[machineType]
+    if not size then
         warn("MachineSpawnService.spawnMachine: unknown machineType: " .. machineType)
         return
     end
 
-    -- Disable pad ProximityPrompt — pad is now occupied
     local padPrompt = pad:FindFirstChildOfClass("ProximityPrompt")
     if padPrompt then
         padPrompt.Enabled = false
     end
 
-    -- Create placeholder Part
-    local part              = Instance.new("Part")
-    part.Name               = padId .. "_Machine"
-    part.Size               = visual.size
-    part.BrickColor         = CONSTRUCTION_VISUAL.color
-    part.Material           = CONSTRUCTION_VISUAL.material
-    part.Anchored           = true
-    part.CanCollide         = false
-    part.TopSurface         = Enum.SurfaceType.Smooth
-    part.BottomSurface      = Enum.SurfaceType.Smooth
+    local part               = Instance.new("Part")
+    part.Name                 = padId .. "_Machine"
+    part.Size                  = size
+    part.BrickColor             = CONSTRUCTION_VISUAL.color
+    part.Material                = CONSTRUCTION_VISUAL.material
+    part.Anchored                 = true
+    part.CanCollide                = false
+    part.TopSurface                 = Enum.SurfaceType.Smooth
+    part.BottomSurface                = Enum.SurfaceType.Smooth
     positionOnPad(part, pad)
-
-    -- Parent to pad so PadController can detect it via ChildAdded
     part.Parent = pad
 
-    -- Store reference for later updates
     data.parts[padId] = part
 end
 
--- Transitions machine from construction to active appearance
--- Called by MachineService after CONSTRUCTION_DURATION elapses
--- Visual changes from yellow neon to machine type color
--- Two ProximityPrompts are added: ServicePrompt (E) and UpgradePrompt (F)
+-- Replaces the construction placeholder with the real model, cloned
+-- from ServerStorage.MachineModels, positioned via its PrimaryPart
 function MachineSpawnService.setMachineActive(
     player      : Player,
     padId       : string,
@@ -176,19 +144,38 @@ function MachineSpawnService.setMachineActive(
     local data = playerData[player.UserId]
     if not data then return end
 
-    local part = data.parts[padId]
-    if not part then
-        warn("MachineSpawnService.setMachineActive: no spawned machine for: "
-            .. padId .. " (" .. player.DisplayName .. ")")
+    local placeholder = data.parts[padId]
+    local pad          = getPadPart(player.UserId, padId)
+    if not pad then return end
+
+    local template = ServerStorage:FindFirstChild("MachineModels")
+        and ServerStorage.MachineModels:FindFirstChild(machineType)
+
+    if not template then
+        warn("MachineSpawnService.setMachineActive: no model found for "
+            .. machineType .. " in ServerStorage.MachineModels")
         return
     end
 
-    local visual = MACHINE_VISUALS[machineType]
-    if not visual then return end
+    if not template.PrimaryPart then
+        warn("MachineSpawnService.setMachineActive: " .. machineType
+            .. " model has no PrimaryPart set")
+        return
+    end
 
-    -- Apply active appearance
-    part.BrickColor = visual.color
-    part.Material   = visual.material
+    local model  = template:Clone()
+    local height = model.PrimaryPart.Size.Y
+
+    model:PivotTo(CFrame.new(
+        pad.Position.X,
+        pad.Position.Y + (pad.Size.Y / 2) + (height / 2),
+        pad.Position.Z
+    ))
+    model.Parent = pad
+
+    if placeholder then
+        placeholder:Destroy()
+    end
 
     -- Service prompt (E) — quick, resets efficiency, no menu
     local servicePrompt                 = Instance.new("ProximityPrompt")
@@ -199,8 +186,7 @@ function MachineSpawnService.setMachineActive(
     servicePrompt.KeyboardKeyCode       = Enum.KeyCode.E
     servicePrompt.MaxActivationDistance = PlotConfig.PROMPT_DISTANCE
     servicePrompt.HoldDuration          = PlotConfig.PROMPT_HOLD_DURATION
-    servicePrompt.Parent                = part
-    servicePrompt.UIOffset = Vector2.new(0, -40)
+    servicePrompt.Parent                = model.PrimaryPart
 
     -- Upgrade/inspect prompt (F) — opens the StatsPanel
     local upgradePrompt                 = Instance.new("ProximityPrompt")
@@ -210,16 +196,17 @@ function MachineSpawnService.setMachineActive(
     upgradePrompt.KeyboardKeyCode       = Enum.KeyCode.F
     upgradePrompt.MaxActivationDistance = PlotConfig.PROMPT_DISTANCE
     upgradePrompt.HoldDuration          = PlotConfig.PROMPT_HOLD_DURATION
-    upgradePrompt.Parent                = part
-    upgradePrompt.UIOffset = Vector2.new(0, 40)
+    upgradePrompt.Parent                = model.PrimaryPart
 
-    -- Both prompts parented to part trigger PadController.ChildAdded
-    -- PadController connects the right handler to each by name
+    -- Start with both damage effects off — updateEfficiencyDisplay
+    -- turns them on as needed once decay starts
+    setEffectTierVisible(model, "Spark", false)
+    setEffectTierVisible(model, "Damage", false)
+
+    data.parts[padId] = model
 end
 
 -- Updates machine appearance after an upgrade is applied
--- Material changes to Neon to visually distinguish upgraded machines
--- UpgradePrompt text updated to show the chosen branch
 function MachineSpawnService.updateUpgraded(
     player      : Player,
     padId       : string,
@@ -229,21 +216,21 @@ function MachineSpawnService.updateUpgraded(
     local data = playerData[player.UserId]
     if not data then return end
 
-    local part = data.parts[padId]
-    if part then
-        part.Material = Enum.Material.Neon
+    local model = data.parts[padId]
+    if not model or not model:IsA("Model") then return end
 
-        local prompt = part:FindFirstChild("UpgradePrompt")
-        if prompt then
-            prompt.ObjectText = machineType .. " [" .. branch .. "]"
-        end
+    local prompt = model.PrimaryPart and model.PrimaryPart:FindFirstChild("UpgradePrompt")
+    if prompt then
+        prompt.ObjectText = machineType .. " [" .. branch .. "]"
     end
 
-    -- Tag every other same-type pad this player owns with a lock
-    -- marker, so their StatsPanel only offers the locked branch
-    for otherPadId, otherPart in pairs(data.parts) do
-        if otherPadId ~= padId and otherPadId:sub(1, #machineType) == machineType then
-            local otherPrompt = otherPart:FindFirstChild("UpgradePrompt")
+    for otherPadId, otherModel in pairs(data.parts) do
+        if otherPadId ~= padId
+            and otherPadId:sub(1, #machineType) == machineType
+            and otherModel:IsA("Model")
+            and otherModel.PrimaryPart
+        then
+            local otherPrompt = otherModel.PrimaryPart:FindFirstChild("UpgradePrompt")
             if otherPrompt and not otherPrompt.ObjectText:find("%[") then
                 otherPrompt.ObjectText = machineType .. " (Locked: " .. branch .. ")"
             end
@@ -251,11 +238,12 @@ function MachineSpawnService.updateUpgraded(
     end
 end
 
--- Updates the ServicePrompt's displayed efficiency
--- Called by PadService's decay tick whenever efficiency changes
--- Updates the ServicePrompt's displayed efficiency and, when the
--- machine is fully broken down, its required hold duration
--- Called by PadService's decay tick whenever efficiency changes
+-- Updates the ServicePrompt's displayed efficiency, its hold
+-- duration, and toggles the model's damage effects based on how
+-- unhealthy the machine currently is:
+--   100% down to the warning threshold: no effects
+--   below the warning threshold: SparkEffect on
+--   fully broken down (0%): both SparkEffect and DamageEffect on
 function MachineSpawnService.updateEfficiencyDisplay(
     player      : Player,
     padId       : string,
@@ -264,28 +252,36 @@ function MachineSpawnService.updateEfficiencyDisplay(
     local data = playerData[player.UserId]
     if not data then return end
 
-    local part = data.parts[padId]
-    if not part then return end
+    local model = data.parts[padId]
+    if not model or not model:IsA("Model") or not model.PrimaryPart then return end
 
-    local prompt = part:FindFirstChild("ServicePrompt")
-    if not prompt then return end
+    local prompt = model.PrimaryPart:FindFirstChild("ServicePrompt")
+    if prompt then
+        local rounded = math.floor(efficiency + 0.5)
 
-    local rounded = math.floor(efficiency + 0.5)
-
-    if efficiency <= MaintenanceConfig.BREAKDOWN_EFFICIENCY then
-        prompt.ObjectText   = "⚠ Broken down — hold to repair"
-        prompt.HoldDuration = MaintenanceConfig.BROKEN_HOLD_DURATION
-    elseif efficiency < MaintenanceConfig.WARNING_THRESHOLD then
-        prompt.ObjectText   = "⚠ Efficiency: " .. rounded .. "% — needs service"
-        prompt.HoldDuration = PlotConfig.PROMPT_HOLD_DURATION
-    else
-        prompt.ObjectText   = "Efficiency: " .. rounded .. "%"
-        prompt.HoldDuration = PlotConfig.PROMPT_HOLD_DURATION
+        if efficiency <= MaintenanceConfig.BREAKDOWN_EFFICIENCY then
+            prompt.ObjectText   = "Broken down — hold to repair"
+            prompt.HoldDuration = MaintenanceConfig.BROKEN_HOLD_DURATION
+        elseif efficiency < MaintenanceConfig.WARNING_THRESHOLD then
+            prompt.ObjectText   = "Low efficiency: " .. rounded .. "% — needs service"
+            prompt.HoldDuration = PlotConfig.PROMPT_HOLD_DURATION
+        else
+            prompt.ObjectText   = "Efficiency: " .. rounded .. "%"
+            prompt.HoldDuration = PlotConfig.PROMPT_HOLD_DURATION
+        end
     end
+
+    local isBroken   = efficiency <= MaintenanceConfig.BREAKDOWN_EFFICIENCY
+    local isDecaying = efficiency < MaintenanceConfig.WARNING_THRESHOLD
+
+    local isBroken   = efficiency <= MaintenanceConfig.BREAKDOWN_EFFICIENCY
+    local isDecaying = efficiency < MaintenanceConfig.WARNING_THRESHOLD
+
+    setEffectTierVisible(model, "Spark", isDecaying)
+    setEffectTierVisible(model, "Damage", isBroken)
 end
 
 -- Destroys a machine model and re-enables the pad's ProximityPrompt
--- Not used in MVP but available for a future sell or demolish mechanic
 function MachineSpawnService.despawnMachine(player : Player, padId : string)
     local data = playerData[player.UserId]
     if not data then return end
@@ -296,7 +292,6 @@ function MachineSpawnService.despawnMachine(player : Player, padId : string)
         data.parts[padId] = nil
     end
 
-    -- Re-enable pad ProximityPrompt so it can be built on again
     local pad = getPadPart(player.UserId, padId)
     if pad then
         local padPrompt = pad:FindFirstChildOfClass("ProximityPrompt")
