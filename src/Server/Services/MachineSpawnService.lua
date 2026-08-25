@@ -134,6 +134,33 @@ function MachineSpawnService.spawnMachine(
     data.parts[padId] = part
 end
 
+-- Shows or hides one effect instance, handling both particle-style
+-- effects (Enabled) and plain Parts (Transparency) — a Part has no
+-- Enabled property, so it needs different handling entirely
+local function setEffectVisible(effect : Instance, visible : boolean)
+    if effect:IsA("ParticleEmitter")
+        or effect:IsA("Fire")
+        or effect:IsA("Smoke")
+        or effect:IsA("Sparkles")
+    then
+        effect.Enabled = visible
+    elseif effect:IsA("BasePart") then
+        effect.Transparency = visible and 0 or 1
+        effect.CanCollide   = false
+    end
+end
+
+-- Toggles every descendant of the model whose name starts with the
+-- given prefix ("Damage" or "Spark") — lets you use as many parts
+-- or particle effects per tier as you want, mixed freely
+local function setEffectTierVisible(model : Model, prefix : string, visible : boolean)
+    for _, descendant in ipairs(model:GetDescendants()) do
+        if descendant.Name:sub(1, #prefix) == prefix then
+            setEffectVisible(descendant, visible)
+        end
+    end
+end
+
 -- Replaces the construction placeholder with the real model, cloned
 -- from ServerStorage.MachineModels, positioned via its PrimaryPart
 function MachineSpawnService.setMachineActive(
