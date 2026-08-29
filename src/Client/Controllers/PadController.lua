@@ -146,7 +146,17 @@ end
 -- Checks existing children first, then keeps listening — order between
 -- the two isn't guaranteed since MachineSpawnService adds them one
 -- after another in the same frame.
-local function watchMachinePartForPrompt(machinePart : BasePart, padId : string)
+local function watchMachinePartForPrompt(machinePart : Instance, padId : string)
+    local promptHost = machinePart
+
+    if machinePart:IsA("Model") then
+        promptHost = machinePart.PrimaryPart
+        if not promptHost then
+            warn("PadController: machine model has no PrimaryPart: " .. padId)
+            return
+        end
+    end
+
     local function tryConnect(child : Instance)
         if not child:IsA("ProximityPrompt") then return end
 
@@ -157,11 +167,11 @@ local function watchMachinePartForPrompt(machinePart : BasePart, padId : string)
         end
     end
 
-    for _, child in ipairs(machinePart:GetChildren()) do
+    for _, child in ipairs(promptHost:GetChildren()) do
         tryConnect(child)
     end
 
-    machinePart.ChildAdded:Connect(tryConnect)
+    promptHost.ChildAdded:Connect(tryConnect)
 end
 
 -- Connects ProximityPrompt on an empty pad for building
@@ -179,7 +189,7 @@ local function connectPadPrompt(padPart : BasePart, machineType : string)
     -- Watch for machine part being added to this pad
     -- When it appears, connect its two prompts
     padPart.ChildAdded:Connect(function(child)
-        if child:IsA("BasePart") then
+        if child:IsA("BasePart") or child:IsA("Model") then
             watchMachinePartForPrompt(child, padPart.Name)
         end
     end)

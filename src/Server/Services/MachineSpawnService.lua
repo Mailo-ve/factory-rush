@@ -214,6 +214,7 @@ function MachineSpawnService.setMachineActive(
     servicePrompt.MaxActivationDistance = PlotConfig.PROMPT_DISTANCE
     servicePrompt.HoldDuration          = PlotConfig.PROMPT_HOLD_DURATION
     servicePrompt.Parent                = model.PrimaryPart
+    servicePrompt.UIOffset              = Vector2.new(0, -40)
 
     -- Upgrade/inspect prompt (F) — opens the StatsPanel
     local upgradePrompt                 = Instance.new("ProximityPrompt")
@@ -224,6 +225,7 @@ function MachineSpawnService.setMachineActive(
     upgradePrompt.MaxActivationDistance = PlotConfig.PROMPT_DISTANCE
     upgradePrompt.HoldDuration          = PlotConfig.PROMPT_HOLD_DURATION
     upgradePrompt.Parent                = model.PrimaryPart
+    upgradePrompt.UIOffset              = Vector2.new(0, 40)
 
     -- Start with both damage effects off — updateEfficiencyDisplay
     -- turns them on as needed once decay starts
