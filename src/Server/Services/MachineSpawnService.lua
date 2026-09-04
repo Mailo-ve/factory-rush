@@ -214,6 +214,7 @@ function MachineSpawnService.setMachineActive(
     servicePrompt.MaxActivationDistance = PlotConfig.PROMPT_DISTANCE
     servicePrompt.HoldDuration          = PlotConfig.PROMPT_HOLD_DURATION
     servicePrompt.Parent                = model.PrimaryPart
+    servicePrompt.RequiresLineOfSight   = false
     servicePrompt.UIOffset              = Vector2.new(0, -40)
 
     -- Upgrade/inspect prompt (F) — opens the StatsPanel
@@ -225,7 +226,14 @@ function MachineSpawnService.setMachineActive(
     upgradePrompt.MaxActivationDistance = PlotConfig.PROMPT_DISTANCE
     upgradePrompt.HoldDuration          = PlotConfig.PROMPT_HOLD_DURATION
     upgradePrompt.Parent                = model.PrimaryPart
+    upgradePrompt.RequiresLineOfSight   = false
     upgradePrompt.UIOffset              = Vector2.new(0, 40)
+
+    local ACCENT_COLORS = {
+    Harvester  = Color3.fromRGB(250,250,5),
+    Assembler  = Color3.fromRGB(80, 220, 255),
+    Fabricator = Color3.fromRGB(140, 85, 255),
+}
 
     -- Start with both damage effects off — updateEfficiencyDisplay
     -- turns them on as needed once decay starts
@@ -248,6 +256,18 @@ function MachineSpawnService.updateUpgraded(
     local model = data.parts[padId]
     if not model or not model:IsA("Model") then return end
 
+    local accentColor = ACCENT_COLORS[machineType]
+    if accentColor then
+        for _, descendant in ipairs(model:GetDescendants()) do
+            if descendant:IsA("BasePart") and descendant.Name:sub(1, 6) == "Accent" then
+                descendant.Material = Enum.Material.Neon
+                descendant.Color    = accentColor
+            end
+        end
+    end
+
+    -- (everything below this line is unchanged from before — prompt
+    -- text update and sibling-pad locking already lived here)
     local prompt = model.PrimaryPart and model.PrimaryPart:FindFirstChild("UpgradePrompt")
     if prompt then
         prompt.ObjectText = machineType .. " [" .. branch .. "]"
