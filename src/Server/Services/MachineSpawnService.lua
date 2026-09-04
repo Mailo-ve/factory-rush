@@ -49,6 +49,12 @@ local CONSTRUCTION_VISUAL = {
     material = Enum.Material.Neon,
 }
 
+local ACCENT_COLORS = {
+    Harvester  = Color3.fromRGB(250,250,5),
+    Assembler  = Color3.fromRGB(80, 220, 255),
+    Fabricator = Color3.fromRGB(140, 85, 255),
+}
+
 -- ─────────────────────────────────────────
 -- PRIVATE HELPERS
 -- ─────────────────────────────────────────
@@ -228,12 +234,6 @@ function MachineSpawnService.setMachineActive(
     upgradePrompt.Parent                = model.PrimaryPart
     upgradePrompt.RequiresLineOfSight   = false
     upgradePrompt.UIOffset              = Vector2.new(0, 40)
-
-    local ACCENT_COLORS = {
-    Harvester  = Color3.fromRGB(250,250,5),
-    Assembler  = Color3.fromRGB(80, 220, 255),
-    Fabricator = Color3.fromRGB(140, 85, 255),
-}
 
     -- Start with both damage effects off — updateEfficiencyDisplay
     -- turns them on as needed once decay starts
