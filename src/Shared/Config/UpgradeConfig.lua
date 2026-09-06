@@ -15,7 +15,7 @@ return {
         B = {
             name                = "Steady Output",
             description         = "Each upgraded Harvester produces a flat 16 income per tick",
-            selfIncomeOverride  = 16,
+            selfIncomeOverride  = 40,
         },
     },
     Assembler = {
@@ -28,7 +28,7 @@ return {
         B = {
             name                    = "Overcharge",
             description             = "Assembler income increases to 150 per tick",
-            selfIncomeOverride      = 150,
+            selfIncomeOverride      = 420,
         },
     },
     Fabricator = {
@@ -36,7 +36,7 @@ return {
         A = {
             name            = "Compound Engine",
             description     = "Compound rate increases to 18%",
-            compoundRate    = 0.18,
+            compoundRate    = 0.22,
         },
         B = {
             name            = "Early Ignition",
