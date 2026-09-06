@@ -90,10 +90,10 @@ end
 function WinConditionManager.stopChecking()
     isChecking = false
 
-    if checkThread then
+    if checkThread and coroutine.running() ~= checkThread then
         task.cancel(checkThread)
-        checkThread = nil
     end
+    checkThread = nil
 end
 
 return WinConditionManager
