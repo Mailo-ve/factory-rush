@@ -13,5 +13,6 @@ return {
     LEADERBOARD_TICK_RATE   = 1,        -- seconds between leaderboard updates
     ACCELERATOR_START       = 440,      -- seconds at which economy accelerates
     ACCELERATOR_MULTIPLIER  = 2.0,      -- income multiplier after accelerator
+    EVENT_INTERVAL = 180,  -- seconds between mid-match events, ~3 minutes
     PLOT_IDS = { "Plot1", "Plot2", "Plot3", "Plot4", "Plot5", "Plot6", "Plot7", "Plot8" },
 }

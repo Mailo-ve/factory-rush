@@ -25,7 +25,8 @@ local MachineSpawnService   = require(ServerScriptService.Server.Services.Machin
 local PadService            = require(ServerScriptService.Server.Services.PadService)
 
 local ResourceService       = require(ServerScriptService.Server.Services.ResourceService)
-local ModifierManager = require(ServerScriptService.Server.Managers.ModifierManager)
+local ModifierManager       = require(ServerScriptService.Server.Managers.ModifierManager)
+local EventManager          = require(ServerScriptService.Server.Managers.EventManager)
 
 local MatchManager = {}
 
@@ -158,6 +159,7 @@ local function endMatch(winnerPlayer : Player?)
     PlotManager.releaseAllPlots()
     PlotSetup.despawnAllPlots()
     ResourceService.stopSpawning()
+    EventManager.stopEvents()
 
     task.delay(10, function()
         for _, player in ipairs(finishedPlayers) do
@@ -201,10 +203,10 @@ local function startMatch(players : {Player})
 
     transitionTo(GameState.PLAYING, players)
 
-    -- Start the economy tick
     EconomyService.startTick()
     PadService.startDecayTick()
     ResourceService.startSpawning()
+    EventManager.startEvents()
 
     -- Start win detection, passing endMatch as the callback
     -- WinConditionManager calls this when a player crosses WIN_CONDITION

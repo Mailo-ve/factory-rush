@@ -261,6 +261,33 @@ function PadService.serviceMachine(player : Player, padId : string) : boolean
     return true
 end
 
+-- Forces every ACTIVE pad, for every player, straight to breakdown.
+-- Used by the "All Machines Break" world event. Reuses the exact
+-- same repair path as natural breakdowns — nothing new to learn.
+function PadService.breakAllActiveMachines()
+    local MachineSpawnService = require(ServerScriptService.Server.Services.MachineSpawnService)
+    local MachineService      = require(ServerScriptService.Server.Services.MachineService)
+
+    for userId, pads in pairs(playerPads) do
+        local player = Players:GetPlayerByUserId(userId)
+
+        for padId, record in pairs(pads) do
+            if record.state == PadState.ACTIVE then
+                record.efficiency = MaintenanceConfig.BREAKDOWN_EFFICIENCY
+                record.isDecaying = false
+
+                if player then
+                    MachineSpawnService.updateEfficiencyDisplay(player, padId, record.efficiency)
+                end
+            end
+        end
+
+        if player then
+            MachineService.recalculateIncome(player)
+        end
+    end
+end
+
 -- Starts the decay tick. After each pass, tells MachineService to
 -- recompute income for every player with at least one pad on record,
 -- since their efficiency (and therefore income) may have just changed.
