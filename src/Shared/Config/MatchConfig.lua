@@ -14,5 +14,6 @@ return {
     ACCELERATOR_START       = 440,      -- seconds at which economy accelerates
     ACCELERATOR_MULTIPLIER  = 2.0,      -- income multiplier after accelerator
     EVENT_INTERVAL = 180,  -- seconds between mid-match events, ~3 minutes
+    EVENT_WARNING_DURATION = 5,  -- seconds between announcement and an event actually starting
     PLOT_IDS = { "Plot1", "Plot2", "Plot3", "Plot4", "Plot5", "Plot6", "Plot7", "Plot8" },
 }

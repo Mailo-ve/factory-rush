@@ -8,6 +8,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlotConfig    = require(ReplicatedStorage.Shared.Config.PlotConfig)
 local MachineConfig = require(ReplicatedStorage.Shared.Config.MachineConfig)
+local PlotManager   = require(ServerScriptService.Server.Managers.PlotManager)
+
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local PlotSetup = {}
 
@@ -110,6 +113,31 @@ function PlotSetup.despawnPlot(plotId : string)
         plotModel:Destroy()
         activePlots[plotId] = nil
     end
+end
+
+-- Kills a player and, once Roblox's respawn cycle brings their new
+-- character in, repositions them at their own plot's spawn point
+-- instead of the default spawn. Used by Floor Is Lava and Evacuation.
+function PlotSetup.killAndRespawnAtPlot(player : Player)
+    local character = player.Character
+    if not character then return end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return end
+
+    local plotId    = PlotManager.getPlotForPlayer(player)
+    local plotModel = plotId and activePlots[plotId]
+
+    local connection
+    connection = player.CharacterAdded:Connect(function()
+        connection:Disconnect()
+        if plotModel then
+            task.wait()
+            PlotSetup.teleportPlayerToPlot(player, plotModel)
+        end
+    end)
+
+    humanoid.Health = 0
 end
 
 -- Teleports a player's character to their plot's PlayerSpawn marker

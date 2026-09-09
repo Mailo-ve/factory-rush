@@ -16,4 +16,22 @@ return {
         description = "Resource caches have appeared everywhere on the map",
         duration    = 20,
     },
+    {
+        id          = "Blackout",
+        name        = "Power Outage",
+        description = "The grid has failed! Restore power at both generators before it's too late.",
+        duration    = 30,
+    },
+    {
+        id          = "FloorIsLava",
+        name        = "Floor Is Lava",
+        description = "The factory floor is electrified! Get to a pad or machine immediately.",
+        duration    = 30,
+    },
+    {
+        id          = "FactoryEvacuation",
+        name        = "Factory Evacuation",
+        description = "Alarms are sounding! Evacuate to the marked safe zone immediately.",
+        duration    = 15,
+    }
 }

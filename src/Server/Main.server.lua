@@ -4,6 +4,7 @@
 -- If logic ends up here, it belongs in a Manager or Service instead.
 
 local ServerScriptService = game:GetService("ServerScriptService")
+game:GetService("Players").RespawnTime = 5
 
 -- ─────────────────────────────────────────
 -- REQUIRE ALL MODULES
